@@ -31,12 +31,19 @@
   </div>
 
   <main class="main-content">
-    <div class="toolbar">
-      <button class="btn-primary" onclick="document.getElementById('photoInput').click()">
-        📷 写真を追加
-      </button>
+
+    <!-- ドラッグ＆ドロップエリア -->
+    <div class="drop-zone" id="dropZone"
+      onclick="document.getElementById('photoInput').click()"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave(event)"
+      ondrop="handleDrop(event)">
+      <div class="drop-zone-inner">
+        <span class="drop-icon">📷</span>
+        <p class="drop-main">写真をここにドラッグ＆ドロップ</p>
+        <p class="drop-sub">または クリックしてファイルを選択</p>
+      </div>
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="uploadPhotos(event)">
-      <span id="uploadStatus" class="upload-status"></span>
     </div>
 
     <!-- アップロード進捗バー -->
@@ -46,7 +53,7 @@
     </div>
 
     <div class="photo-grid" id="photoGrid">
-      <p class="empty-msg">まだ写真がありません。「📷 写真を追加」から追加できます。</p>
+      <p class="empty-msg">まだ写真がありません。上のエリアから追加できます。</p>
     </div>
   </main>
 
@@ -120,13 +127,35 @@
     }
 
     // =============================
+    // ドラッグ＆ドロップ
+    // =============================
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('dropZone').classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      document.getElementById('dropZone').classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('dropZone').classList.remove('drag-over');
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (files.length > 0) uploadFiles(files);
+    }
+
+    // =============================
     // Cloudinaryへアップロード
     // =============================
     async function uploadPhotos(event) {
       const files = Array.from(event.target.files);
       if (files.length === 0) return;
+      await uploadFiles(files);
+      event.target.value = '';
+    }
 
-      const progressWrap = document.getElementById('progressWrap');
+    async function uploadFiles(files) {
       const progressBar  = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
       const statusEl     = document.getElementById('uploadStatus');
@@ -170,7 +199,6 @@
 
       savePhotos();
       renderPhotos();
-      event.target.value = '';
     }
 
     // =============================

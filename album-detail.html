@@ -184,7 +184,7 @@
             body:    JSON.stringify({
               file:          base64,
               upload_preset: UPLOAD_PRESET,
-              folder:        `yamapper/${albumId}`
+              folder:        'yamapper'
             })
           });
           const data = await res.json();

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>やまっぺ - コメント</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="home.html" class="nav-logo">⛰️ やまっぺ</a>
+    <div class="nav-links">
+      <a href="home.html">ホーム</a>
+      <a href="albums.html">アルバム</a>
+      <a href="comments.html" class="active">コメント</a>
+      <a href="#" onclick="logout()">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <h1>💬 コメント</h1>
+    <p>山行の感想・メッセージを残そう</p>
+  </div>
+
+  <main class="main-content">
+    <div class="comment-form-card">
+      <h2>コメントを書く</h2>
+      <div class="form-group">
+        <label>お名前</label>
+        <input type="text" id="cName" placeholder="お名前">
+      </div>
+      <div class="form-group">
+        <label>メッセージ</label>
+        <textarea id="cText" placeholder="感想・メッセージをどうぞ" rows="4"></textarea>
+      </div>
+      <button class="btn-primary" onclick="postComment()">投稿する</button>
+    </div>
+
+    <div class="comments-list" id="commentsList"></div>
+  </main>
+
+  <footer class="footer">
+    <p>⛰️ やまっぺ &copy; 2025</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    checkAuth();
+
+    function renderComments() {
+      const comments = getComments().slice().reverse();
+      const list = document.getElementById('commentsList');
+      if (comments.length === 0) {
+        list.innerHTML = '<p class="empty-msg">まだコメントがありません。最初のコメントを残しましょう！</p>';
+        return;
+      }
+      list.innerHTML = comments.map(c => `
+        <div class="comment-card">
+          <div class="comment-header">
+            <span class="comment-avatar">${c.name.charAt(0)}</span>
+            <div>
+              <strong>${c.name}</strong>
+              <span class="comment-date">${c.date}</span>
+            </div>
+            <button class="btn-danger-sm" onclick="deleteComment('${c.id}')">削除</button>
+          </div>
+          <p class="comment-body">${c.text}</p>
+        </div>
+      `).join('');
+    }
+
+    function postComment() {
+      const name = document.getElementById('cName').value.trim();
+      const text = document.getElementById('cText').value.trim();
+      if (!name) { alert('お名前を入力してください'); return; }
+      if (!text) { alert('メッセージを入力してください'); return; }
+      const comments = getComments();
+      comments.push({
+        id: Date.now().toString(),
+        name, text,
+        date: new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
+      });
+      saveComments(comments);
+      document.getElementById('cName').value = '';
+      document.getElementById('cText').value = '';
+      renderComments();
+    }
+
+    function deleteComment(id) {
+      if (!confirm('このコメントを削除しますか？')) return;
+      const comments = getComments().filter(c => c.id !== id);
+      saveComments(comments);
+      renderComments();
+    }
+
+    function logout() {
+      sessionStorage.removeItem('yamapper_auth');
+      window.location.href = 'index.html';
+    }
+
+    renderComments();
+  </script>
+</body>
+</html>

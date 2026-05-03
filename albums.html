@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>やまっぺ - アルバム</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="home.html" class="nav-logo">⛰️ やまっぺ</a>
+    <div class="nav-links">
+      <a href="home.html">ホーム</a>
+      <a href="albums.html" class="active">アルバム</a>
+      <a href="comments.html">コメント</a>
+      <a href="#" onclick="logout()">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <h1>📷 山行アルバム</h1>
+    <p>登った山の記録と写真</p>
+  </div>
+
+  <main class="main-content">
+    <div class="toolbar">
+      <button class="btn-primary" onclick="openAddModal()">＋ 新しいアルバムを追加</button>
+    </div>
+
+    <div class="cards-grid" id="albumsGrid"></div>
+  </main>
+
+  <!-- アルバム追加モーダル -->
+  <div class="modal-overlay" id="addModal" style="display:none">
+    <div class="modal">
+      <h2>新しいアルバム</h2>
+      <div class="form-group">
+        <label>山の名前</label>
+        <input type="text" id="newTitle" placeholder="例：富士山">
+      </div>
+      <div class="form-group">
+        <label>日付</label>
+        <input type="date" id="newDate">
+      </div>
+      <div class="form-group">
+        <label>場所・エリア</label>
+        <input type="text" id="newLocation" placeholder="例：静岡県・山梨県">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <textarea id="newDesc" placeholder="山行の感想など" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>絵文字アイコン</label>
+        <div class="emoji-picker">
+          <span class="ep-item selected" data-emoji="⛰️" onclick="selectEmoji(this)">⛰️</span>
+          <span class="ep-item" data-emoji="🏔️" onclick="selectEmoji(this)">🏔️</span>
+          <span class="ep-item" data-emoji="🗻" onclick="selectEmoji(this)">🗻</span>
+          <span class="ep-item" data-emoji="🌄" onclick="selectEmoji(this)">🌄</span>
+          <span class="ep-item" data-emoji="🍂" onclick="selectEmoji(this)">🍂</span>
+          <span class="ep-item" data-emoji="🌸" onclick="selectEmoji(this)">🌸</span>
+          <span class="ep-item" data-emoji="❄️" onclick="selectEmoji(this)">❄️</span>
+          <span class="ep-item" data-emoji="🌿" onclick="selectEmoji(this)">🌿</span>
+        </div>
+        <input type="hidden" id="newEmoji" value="⛰️">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-outline" onclick="closeModal()">キャンセル</button>
+        <button class="btn-primary" onclick="addAlbum()">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>⛰️ やまっぺ &copy; 2025</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    checkAuth();
+
+    const COLORS = ['#8B6F47','#4A7C59','#5B7EA6','#7B6BA0','#A05C5C','#5C8A7A','#7A7A4A'];
+
+    function renderAlbums() {
+      const albums = getAlbums();
+      const grid = document.getElementById('albumsGrid');
+      if (albums.length === 0) {
+        grid.innerHTML = '<p class="empty-msg">まだアルバムがありません。「＋ 新しいアルバムを追加」から始めましょう。</p>';
+        return;
+      }
+      grid.innerHTML = albums.map(a => `
+        <div class="card">
+          <a href="album-detail.html?id=${a.id}" style="text-decoration:none;color:inherit">
+            <div class="card-img" style="background-color:${a.color}">
+              <span class="card-emoji">${a.emoji}</span>
+            </div>
+            <div class="card-body">
+              <h3>${a.title}</h3>
+              <p class="card-date">${a.date}</p>
+              <p class="card-desc">${a.description}</p>
+              <span class="card-tag">${a.location}</span>
+            </div>
+          </a>
+          <div class="card-footer">
+            <span class="photo-count">📷 ${a.photos ? a.photos.length : 0}枚</span>
+            <button class="btn-danger-sm" onclick="deleteAlbum('${a.id}')">削除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openAddModal() {
+      document.getElementById('addModal').style.display = 'flex';
+      document.getElementById('newDate').value = new Date().toISOString().slice(0,10);
+    }
+
+    function closeModal() {
+      document.getElementById('addModal').style.display = 'none';
+    }
+
+    function selectEmoji(el) {
+      document.querySelectorAll('.ep-item').forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('newEmoji').value = el.dataset.emoji;
+    }
+
+    function addAlbum() {
+      const title = document.getElementById('newTitle').value.trim();
+      const date = document.getElementById('newDate').value;
+      const location = document.getElementById('newLocation').value.trim();
+      const desc = document.getElementById('newDesc').value.trim();
+      const emoji = document.getElementById('newEmoji').value;
+      if (!title) { alert('山の名前を入力してください'); return; }
+      const albums = getAlbums();
+      const color = COLORS[albums.length % COLORS.length];
+      const newAlbum = {
+        id: Date.now().toString(),
+        title, date: date || new Date().toISOString().slice(0,10),
+        location: location || '未設定',
+        description: desc || '',
+        emoji, color, photos: []
+      };
+      albums.unshift(newAlbum);
+      saveAlbums(albums);
+      closeModal();
+      renderAlbums();
+      document.getElementById('newTitle').value = '';
+      document.getElementById('newLocation').value = '';
+      document.getElementById('newDesc').value = '';
+    }
+
+    function deleteAlbum(id) {
+      if (!confirm('このアルバムを削除しますか？')) return;
+      const albums = getAlbums().filter(a => a.id !== id);
+      saveAlbums(albums);
+      renderAlbums();
+    }
+
+    function logout() {
+      sessionStorage.removeItem('yamapper_auth');
+      window.location.href = 'index.html';
+    }
+
+    renderAlbums();
+  </script>
+</body>
+</html>

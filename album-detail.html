@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>やまっぺ - アルバム詳細</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="home.html" class="nav-logo">⛰️ やまっぺ</a>
+    <div class="nav-links">
+      <a href="home.html">ホーム</a>
+      <a href="albums.html" class="active">アルバム</a>
+      <a href="comments.html">コメント</a>
+      <a href="#" onclick="logout()">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="album-header" id="albumHeader">
+    <a href="albums.html" class="back-link">← アルバム一覧</a>
+    <div class="album-title-area">
+      <span id="albumEmoji" class="album-emoji-big"></span>
+      <div>
+        <h1 id="albumTitle">読み込み中…</h1>
+        <p id="albumMeta"></p>
+      </div>
+    </div>
+    <p id="albumDesc" class="album-desc-text"></p>
+  </div>
+
+  <main class="main-content">
+    <div class="toolbar">
+      <button class="btn-primary" onclick="document.getElementById('photoInput').click()">📷 写真を追加</button>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="addPhotos(event)">
+    </div>
+
+    <div class="photo-grid" id="photoGrid">
+      <p class="empty-msg">まだ写真がありません。「📷 写真を追加」から追加できます。</p>
+    </div>
+  </main>
+
+  <!-- ライトボックス -->
+  <div class="lightbox" id="lightbox" style="display:none" onclick="closeLightbox()">
+    <button class="lb-close" onclick="closeLightbox()">✕</button>
+    <button class="lb-prev" onclick="event.stopPropagation();changePhoto(-1)">‹</button>
+    <img id="lbImg" src="" alt="">
+    <button class="lb-next" onclick="event.stopPropagation();changePhoto(1)">›</button>
+    <p id="lbCaption" class="lb-caption"></p>
+  </div>
+
+  <footer class="footer">
+    <p>⛰️ やまっぺ &copy; 2025</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    checkAuth();
+
+    const params = new URLSearchParams(window.location.search);
+    const albumId = params.get('id');
+    let currentPhotos = [];
+    let lbIndex = 0;
+
+    function loadAlbum() {
+      const albums = getAlbums();
+      const album = albums.find(a => a.id === albumId);
+      if (!album) { window.location.href = 'albums.html'; return; }
+      document.title = `やまっぺ - ${album.title}`;
+      document.getElementById('albumEmoji').textContent = album.emoji;
+      document.getElementById('albumTitle').textContent = album.title;
+      document.getElementById('albumMeta').textContent = `${album.date}　📍 ${album.location}`;
+      document.getElementById('albumDesc').textContent = album.description;
+      document.getElementById('albumHeader').style.background = album.color;
+      currentPhotos = album.photos || [];
+      renderPhotos();
+    }
+
+    function renderPhotos() {
+      const grid = document.getElementById('photoGrid');
+      if (currentPhotos.length === 0) {
+        grid.innerHTML = '<p class="empty-msg">まだ写真がありません。「📷 写真を追加」から追加できます。</p>';
+        return;
+      }
+      grid.innerHTML = currentPhotos.map((p, i) => `
+        <div class="photo-item" onclick="openLightbox(${i})">
+          <img src="${p.src}" alt="${p.caption || ''}">
+          <div class="photo-overlay">
+            <span>${p.caption || ''}</span>
+            <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addPhotos(event) {
+      const files = Array.from(event.target.files);
+      let loaded = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          currentPhotos.push({ src: e.target.result, caption: file.name.replace(/\.[^/.]+$/, '') });
+          loaded++;
+          if (loaded === files.length) {
+            savePhotos();
+            renderPhotos();
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      event.target.value = '';
+    }
+
+    function deletePhoto(index) {
+      if (!confirm('この写真を削除しますか？')) return;
+      currentPhotos.splice(index, 1);
+      savePhotos();
+      renderPhotos();
+    }
+
+    function savePhotos() {
+      const albums = getAlbums();
+      const idx = albums.findIndex(a => a.id === albumId);
+      if (idx !== -1) { albums[idx].photos = currentPhotos; saveAlbums(albums); }
+    }
+
+    function openLightbox(i) {
+      lbIndex = i;
+      document.getElementById('lbImg').src = currentPhotos[i].src;
+      document.getElementById('lbCaption').textContent = currentPhotos[i].caption || '';
+      document.getElementById('lightbox').style.display = 'flex';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').style.display = 'none';
+    }
+
+    function changePhoto(dir) {
+      lbIndex = (lbIndex + dir + currentPhotos.length) % currentPhotos.length;
+      document.getElementById('lbImg').src = currentPhotos[lbIndex].src;
+      document.getElementById('lbCaption').textContent = currentPhotos[lbIndex].caption || '';
+    }
+
+    function logout() {
+      sessionStorage.removeItem('yamapper_auth');
+      window.location.href = 'index.html';
+    }
+
+    loadAlbum();
+  </script>
+</body>
+</html>

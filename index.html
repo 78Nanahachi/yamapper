@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>やまっぺ - ログイン</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="login-page">
+  <div class="mountain-bg">
+    <div class="peak peak1"></div>
+    <div class="peak peak2"></div>
+    <div class="peak peak3"></div>
+    <div class="stars"></div>
+  </div>
+
+  <div class="login-container">
+    <div class="login-box">
+      <div class="logo-area">
+        <div class="logo-icon">⛰️</div>
+        <h1 class="site-title">やまっぺ</h1>
+        <p class="site-subtitle">山と歩む、記憶の記録</p>
+      </div>
+      <form class="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="password">パスワード</label>
+          <input type="password" id="password" placeholder="パスワードを入力" autocomplete="current-password">
+        </div>
+        <div class="error-msg" id="errorMsg">パスワードが違います</div>
+        <button type="submit" class="btn-login">ログイン</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // パスワードはここで変更できます（例: "yamanokami123"）
+    const SITE_PASSWORD = "yamanokami123";
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const pw = document.getElementById('password').value;
+      const err = document.getElementById('errorMsg');
+      if (pw === SITE_PASSWORD) {
+        sessionStorage.setItem('yamapper_auth', 'true');
+        window.location.href = 'home.html';
+      } else {
+        err.style.display = 'block';
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    }
+
+    // すでにログイン済みならホームへ
+    if (sessionStorage.getItem('yamapper_auth') === 'true') {
+      window.location.href = 'home.html';
+    }
+  </script>
+</body>
+</html>

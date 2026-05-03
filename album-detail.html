@@ -32,8 +32,17 @@
 
   <main class="main-content">
     <div class="toolbar">
-      <button class="btn-primary" onclick="document.getElementById('photoInput').click()">📷 写真を追加</button>
-      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="addPhotos(event)">
+      <button class="btn-primary" onclick="document.getElementById('photoInput').click()">
+        📷 写真を追加
+      </button>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="uploadPhotos(event)">
+      <span id="uploadStatus" class="upload-status"></span>
+    </div>
+
+    <!-- アップロード進捗バー -->
+    <div class="progress-wrap" id="progressWrap" style="display:none">
+      <div class="progress-bar" id="progressBar"></div>
+      <span id="progressText">0 / 0 枚アップロード中…</span>
     </div>
 
     <div class="photo-grid" id="photoGrid">
@@ -57,27 +66,42 @@
   <script src="js/data.js"></script>
   <script src="js/auth.js"></script>
   <script>
+    // =============================
+    // Cloudinary 設定
+    // =============================
+    const CLOUD_NAME   = 'dgsbvnswt';
+    const UPLOAD_PRESET = 'yamapper_preset';
+    const UPLOAD_URL   = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+    // =============================
+    // 初期化
+    // =============================
     checkAuth();
 
-    const params = new URLSearchParams(window.location.search);
+    const params  = new URLSearchParams(window.location.search);
     const albumId = params.get('id');
     let currentPhotos = [];
     let lbIndex = 0;
 
     function loadAlbum() {
       const albums = getAlbums();
-      const album = albums.find(a => a.id === albumId);
+      const album  = albums.find(a => a.id === albumId);
       if (!album) { window.location.href = 'albums.html'; return; }
+
       document.title = `やまっぺ - ${album.title}`;
-      document.getElementById('albumEmoji').textContent = album.emoji;
-      document.getElementById('albumTitle').textContent = album.title;
-      document.getElementById('albumMeta').textContent = `${album.date}　📍 ${album.location}`;
-      document.getElementById('albumDesc').textContent = album.description;
+      document.getElementById('albumEmoji').textContent  = album.emoji;
+      document.getElementById('albumTitle').textContent  = album.title;
+      document.getElementById('albumMeta').textContent   = `${album.date}　📍 ${album.location}`;
+      document.getElementById('albumDesc').textContent   = album.description;
       document.getElementById('albumHeader').style.background = album.color;
+
       currentPhotos = album.photos || [];
       renderPhotos();
     }
 
+    // =============================
+    // 写真表示
+    // =============================
     function renderPhotos() {
       const grid = document.getElementById('photoGrid');
       if (currentPhotos.length === 0) {
@@ -86,7 +110,7 @@
       }
       grid.innerHTML = currentPhotos.map((p, i) => `
         <div class="photo-item" onclick="openLightbox(${i})">
-          <img src="${p.src}" alt="${p.caption || ''}">
+          <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
           <div class="photo-overlay">
             <span>${p.caption || ''}</span>
             <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
@@ -95,26 +119,65 @@
       `).join('');
     }
 
-    function addPhotos(event) {
+    // =============================
+    // Cloudinaryへアップロード
+    // =============================
+    async function uploadPhotos(event) {
       const files = Array.from(event.target.files);
-      let loaded = 0;
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          currentPhotos.push({ src: e.target.result, caption: file.name.replace(/\.[^/.]+$/, '') });
-          loaded++;
-          if (loaded === files.length) {
-            savePhotos();
-            renderPhotos();
+      if (files.length === 0) return;
+
+      const progressWrap = document.getElementById('progressWrap');
+      const progressBar  = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const statusEl     = document.getElementById('uploadStatus');
+
+      progressWrap.style.display = 'block';
+      statusEl.textContent = '';
+      let done = 0;
+
+      for (const file of files) {
+        progressText.textContent = `${done} / ${files.length} 枚アップロード中…`;
+        progressBar.style.width  = `${Math.round(done / files.length * 100)}%`;
+
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', UPLOAD_PRESET);
+          // アルバムIDをフォルダ名に使って整理
+          formData.append('folder', `yamapper/${albumId}`);
+
+          const res  = await fetch(UPLOAD_URL, { method: 'POST', body: formData });
+          const data = await res.json();
+
+          if (data.secure_url) {
+            currentPhotos.push({
+              src:       data.secure_url,
+              publicId:  data.public_id,
+              caption:   file.name.replace(/\.[^/.]+$/, '')
+            });
+          } else {
+            console.error('Upload error:', data);
           }
-        };
-        reader.readAsDataURL(file);
-      });
+        } catch (err) {
+          console.error('Upload failed:', err);
+        }
+        done++;
+      }
+
+      progressBar.style.width  = '100%';
+      progressText.textContent = `${done} 枚のアップロード完了！`;
+      setTimeout(() => { progressWrap.style.display = 'none'; }, 2000);
+
+      savePhotos();
+      renderPhotos();
       event.target.value = '';
     }
 
+    // =============================
+    // 写真削除（localStorageのURLのみ削除）
+    // =============================
     function deletePhoto(index) {
-      if (!confirm('この写真を削除しますか？')) return;
+      if (!confirm('この写真をアルバムから削除しますか？\n（Cloudinary上の画像は残ります）')) return;
       currentPhotos.splice(index, 1);
       savePhotos();
       renderPhotos();
@@ -122,13 +185,19 @@
 
     function savePhotos() {
       const albums = getAlbums();
-      const idx = albums.findIndex(a => a.id === albumId);
-      if (idx !== -1) { albums[idx].photos = currentPhotos; saveAlbums(albums); }
+      const idx    = albums.findIndex(a => a.id === albumId);
+      if (idx !== -1) {
+        albums[idx].photos = currentPhotos;
+        saveAlbums(albums);
+      }
     }
 
+    // =============================
+    // ライトボックス
+    // =============================
     function openLightbox(i) {
       lbIndex = i;
-      document.getElementById('lbImg').src = currentPhotos[i].src;
+      document.getElementById('lbImg').src             = currentPhotos[i].src;
       document.getElementById('lbCaption').textContent = currentPhotos[i].caption || '';
       document.getElementById('lightbox').style.display = 'flex';
     }
@@ -139,7 +208,7 @@
 
     function changePhoto(dir) {
       lbIndex = (lbIndex + dir + currentPhotos.length) % currentPhotos.length;
-      document.getElementById('lbImg').src = currentPhotos[lbIndex].src;
+      document.getElementById('lbImg').src             = currentPhotos[lbIndex].src;
       document.getElementById('lbCaption').textContent = currentPhotos[lbIndex].caption || '';
     }
 

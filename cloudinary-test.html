@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Cloudinary 接続テスト</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 1rem; }
+    #dropZone {
+      border: 3px dashed #4A7C59; border-radius: 12px;
+      padding: 3rem; text-align: center; cursor: pointer;
+      background: #f0f8f2; transition: background 0.2s;
+    }
+    #dropZone.over { background: #c8ecd4; }
+    #log { margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px; font-size: 0.9rem; white-space: pre-wrap; min-height: 60px; }
+    img { max-width: 200px; margin-top: 1rem; border-radius: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h2>⛰️ Cloudinary 接続テスト</h2>
+  <p>写真を下のエリアにD&Dしてください。</p>
+
+  <div id="dropZone"
+    ondragover="ev(event,'over')"
+    ondragleave="ev(event,'leave')"
+    ondrop="ev(event,'drop')"
+    onclick="document.getElementById('fi').click()">
+    📷 ここにD&D またはクリック
+    <input type="file" id="fi" accept="image/*" style="display:none" onchange="upload(event.target.files[0])">
+  </div>
+
+  <div id="log">待機中…</div>
+  <img id="preview">
+
+  <script>
+    const CLOUD_NAME    = 'dgsbvnswt';
+    const UPLOAD_PRESET = 'yamapper_preset';
+
+    function ev(e, type) {
+      e.preventDefault();
+      const dz = document.getElementById('dropZone');
+      if (type === 'over')  dz.classList.add('over');
+      if (type === 'leave') dz.classList.remove('over');
+      if (type === 'drop') {
+        dz.classList.remove('over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) upload(file);
+        else log('❌ 画像ファイルではありません');
+      }
+    }
+
+    async function upload(file) {
+      if (!file) return;
+      log(`📤 アップロード開始: ${file.name} (${Math.round(file.size/1024)}KB)`);
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', UPLOAD_PRESET);
+        const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method:'POST', body:fd });
+        const data = await res.json();
+        if (data.secure_url) {
+          log(`✅ 成功！\nURL: ${data.secure_url}`);
+          const img = document.getElementById('preview');
+          img.src = data.secure_url;
+          img.style.display = 'block';
+        } else {
+          log(`❌ エラー:\n${JSON.stringify(data, null, 2)}`);
+        }
+      } catch(err) {
+        log(`❌ 通信エラー: ${err.message}`);
+      }
+    }
+
+    function log(msg) { document.getElementById('log').textContent = msg; }
+  </script>
+</body>
+</html>

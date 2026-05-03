@@ -156,12 +156,11 @@
     }
 
     async function uploadFiles(files) {
+      const progressWrap = document.getElementById('progressWrap');
       const progressBar  = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
-      const statusEl     = document.getElementById('uploadStatus');
 
       progressWrap.style.display = 'block';
-      statusEl.textContent = '';
       let done = 0;
 
       for (const file of files) {

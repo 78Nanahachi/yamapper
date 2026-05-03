@@ -183,8 +183,7 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
               file:          base64,
-              upload_preset: UPLOAD_PRESET,
-              folder:        'yamapper'
+              upload_preset: UPLOAD_PRESET
             })
           });
           const data = await res.json();

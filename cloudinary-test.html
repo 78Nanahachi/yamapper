@@ -44,29 +44,44 @@
         dz.classList.remove('over');
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith('image/')) upload(file);
-        else log('❌ 画像ファイルではありません');
+        else log('画像ファイルではありません');
       }
+    }
+
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     }
 
     async function upload(file) {
       if (!file) return;
-      log(`📤 アップロード開始: ${file.name} (${Math.round(file.size/1024)}KB)`);
+      log('アップロード開始: ' + file.name + ' (' + Math.round(file.size/1024) + 'KB)\n変換中…');
       try {
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('upload_preset', UPLOAD_PRESET);
-        const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method:'POST', body:fd });
+        const base64 = await toBase64(file);
+        log('Cloudinaryに送信中…');
+        const res = await fetch(
+          'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload',
+          {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ file: base64, upload_preset: UPLOAD_PRESET })
+          }
+        );
         const data = await res.json();
         if (data.secure_url) {
-          log(`✅ 成功！\nURL: ${data.secure_url}`);
+          log('成功！\nURL: ' + data.secure_url);
           const img = document.getElementById('preview');
           img.src = data.secure_url;
           img.style.display = 'block';
         } else {
-          log(`❌ エラー:\n${JSON.stringify(data, null, 2)}`);
+          log('Cloudinaryエラー:\n' + JSON.stringify(data, null, 2));
         }
       } catch(err) {
-        log(`❌ 通信エラー: ${err.message}`);
+        log('通信エラー: ' + err.message);
       }
     }
 

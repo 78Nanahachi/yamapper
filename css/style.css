@@ -660,3 +660,10 @@ body {
   color: var(--col-muted);
   margin-top: 0.3rem;
 }
+
+/* カバー画像D&Dハイライト */
+.cover-upload-area.drag-over {
+  border-color: var(--col-accent);
+  border-style: solid;
+  background: rgba(74,124,89,0.08);
+}

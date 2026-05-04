@@ -491,3 +491,134 @@ body {
 .drop-icon { font-size: 2.5rem; display: block; margin-bottom: 0.6rem; }
 .drop-main { font-size: 1rem; color: var(--col-text); margin-bottom: 0.3rem; }
 .drop-sub  { font-size: 0.85rem; color: var(--col-muted); }
+
+/* ====== 写真コメントバッジ ====== */
+.photo-comment-badge {
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* ====== ライトボックス（コメントパネル付き） ====== */
+.lb-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 90vw;
+  max-height: 80vh;
+}
+
+.lb-main img {
+  max-width: 60vw;
+  max-height: 75vh;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.lb-comment-panel {
+  width: 280px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  max-height: 75vh;
+  color: var(--col-text);
+}
+
+.lb-comment-title {
+  font-size: 0.95rem;
+  margin-bottom: 0.8rem;
+  color: var(--col-text);
+  font-family: var(--font-alt);
+}
+
+.lb-comments {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 0.8rem;
+}
+
+.lb-no-comment {
+  font-size: 0.85rem;
+  color: var(--col-muted);
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.lb-comment-item {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  align-items: flex-start;
+}
+
+.lb-comment-avatar {
+  width: 28px; height: 28px;
+  background: var(--col-accent);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 600;
+  flex-shrink: 0;
+}
+
+.lb-comment-body {
+  flex: 1;
+  font-size: 0.82rem;
+}
+
+.lb-comment-body strong { display: block; font-size: 0.85rem; }
+.lb-comment-date { font-size: 0.72rem; color: var(--col-muted); }
+.lb-comment-body p { margin-top: 0.2rem; line-height: 1.5; }
+
+.btn-del-comment {
+  background: none; border: none;
+  color: var(--col-muted); cursor: pointer;
+  font-size: 0.75rem; padding: 2px 4px;
+  flex-shrink: 0;
+}
+.btn-del-comment:hover { color: var(--col-danger); }
+
+.lb-comment-form {
+  border-top: 1px solid var(--col-border);
+  padding-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lb-comment-form input,
+.lb-comment-form textarea {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--col-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  outline: none;
+  resize: none;
+}
+
+.lb-comment-form input:focus,
+.lb-comment-form textarea:focus { border-color: var(--col-accent); }
+
+.lb-comment-form .btn-primary {
+  padding: 0.4rem;
+  font-size: 0.85rem;
+}
+
+/* ライトボックス全体を横並びに対応 */
+.lightbox {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (max-width: 700px) {
+  .lb-main { flex-direction: column; max-width: 95vw; }
+  .lb-main img { max-width: 95vw; max-height: 45vh; }
+  .lb-comment-panel { width: 100%; max-height: 35vh; }
+}

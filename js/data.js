@@ -1,24 +1,104 @@
-// データ管理 - localStorage使用
+// ==============================
+// Firebase 設定
+// ==============================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, getDocs, getDoc, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const ALBUMS_KEY = 'yamapper_albums';
-const COMMENTS_KEY = 'yamapper_comments';
+const firebaseConfig = {
+  apiKey: "AIzaSyCuueu93euKYpnZoCo32XOu_edQ3iq6MbY",
+  authDomain: "yamapper-b134c.firebaseapp.com",
+  projectId: "yamapper-b134c",
+  storageBucket: "yamapper-b134c.firebasestorage.app",
+  messagingSenderId: "780260434474",
+  appId: "1:780260434474:web:f549f600db59ffa0b61953"
+};
 
-function getAlbums() {
-  try {
-    return JSON.parse(localStorage.getItem(ALBUMS_KEY)) || [];
-  } catch { return []; }
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// アルバム一覧を取得
+async function getAlbums() {
+  const snap = await getDocs(query(collection(db, 'albums'), orderBy('createdAt', 'desc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-function saveAlbums(albums) {
-  localStorage.setItem(ALBUMS_KEY, JSON.stringify(albums));
+// アルバムを保存（新規）
+async function saveAlbum(album) {
+  return await addDoc(collection(db, 'albums'), { ...album, createdAt: Date.now() });
 }
 
-function getComments() {
-  try {
-    return JSON.parse(localStorage.getItem(COMMENTS_KEY)) || [];
-  } catch { return []; }
+// アルバムを削除
+async function deleteAlbumById(id) {
+  await deleteDoc(doc(db, 'albums', id));
 }
 
-function saveComments(comments) {
-  localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments));
+// アルバム1件を取得
+async function getAlbum(id) {
+  const snap = await getDoc(doc(db, 'albums', id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
 }
+
+// アルバムの写真リストを更新
+async function savePhotos(albumId, photos) {
+  await updateDoc(doc(db, 'albums', albumId), { photos });
+}
+
+// アルバム一覧をリアルタイム監視
+function onAlbumsChanged(callback) {
+  return onSnapshot(query(collection(db, 'albums'), orderBy('createdAt', 'desc')), snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+// コメント一覧をリアルタイム監視
+function onCommentsChanged(callback) {
+  return onSnapshot(query(collection(db, 'comments'), orderBy('createdAt', 'asc')), snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+// コメントを追加
+async function addComment(name, text) {
+  await addDoc(collection(db, 'comments'), {
+    name, text,
+    createdAt: Date.now(),
+    date: new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  });
+}
+
+// コメントを削除
+async function removeComment(id) {
+  await deleteDoc(doc(db, 'comments', id));
+}
+
+// 写真コメントをリアルタイム監視
+function onPhotoCommentsChanged(albumId, photoIndex, callback) {
+  return onSnapshot(
+    query(collection(db, 'albums', albumId, 'photoComments'), orderBy('createdAt', 'asc')),
+    snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(all.filter(c => c.photoIndex === photoIndex));
+    }
+  );
+}
+
+// 写真コメントを追加
+async function addPhotoComment(albumId, photoIndex, name, text) {
+  await addDoc(collection(db, 'albums', albumId, 'photoComments'), {
+    photoIndex, name, text,
+    createdAt: Date.now(),
+    date: new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  });
+}
+
+// 写真コメントを削除
+async function removePhotoComment(albumId, commentId) {
+  await deleteDoc(doc(db, 'albums', albumId, 'photoComments', commentId));
+}
+
+export {
+  db, getAlbums, saveAlbum, deleteAlbumById, getAlbum, savePhotos, onAlbumsChanged,
+  onCommentsChanged, addComment, removeComment,
+  onPhotoCommentsChanged, addPhotoComment, removePhotoComment
+};

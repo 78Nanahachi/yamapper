@@ -34,7 +34,7 @@
     <section class="section">
       <h2 class="section-title">最近の山行</h2>
       <div class="cards-grid" id="recentAlbums">
-        <!-- JavaScriptで動的生成 -->
+        <p class="empty-msg">読み込み中…</p>
       </div>
       <div class="center-btn">
         <a href="albums.html" class="btn-outline">すべてのアルバムを見る →</a>
@@ -45,15 +45,15 @@
       <h2 class="section-title">記録</h2>
       <div class="stats-grid">
         <div class="stat-card">
-          <span class="stat-num" id="totalMountains">0</span>
+          <span class="stat-num" id="totalMountains">-</span>
           <span class="stat-label">登頂数</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="totalPhotos">0</span>
+          <span class="stat-num" id="totalPhotos">-</span>
           <span class="stat-label">写真枚数</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="totalComments">0</span>
+          <span class="stat-num" id="totalComments">-</span>
           <span class="stat-label">コメント</span>
         </div>
       </div>
@@ -61,7 +61,9 @@
 
     <section class="section">
       <h2 class="section-title">最新コメント</h2>
-      <div class="comments-preview" id="recentComments"></div>
+      <div class="comments-preview" id="recentComments">
+        <p class="empty-msg">読み込み中…</p>
+      </div>
       <div class="center-btn">
         <a href="comments.html" class="btn-outline">コメントページへ →</a>
       </div>
@@ -72,65 +74,56 @@
     <p>⛰️ やまっぺ &copy; 2026</p>
   </footer>
 
-  <script src="js/data.js"></script>
   <script src="js/auth.js"></script>
-  <script>
+  <script type="module">
+    import { onAlbumsChanged, onCommentsChanged } from './js/data.js';
     checkAuth();
-    renderRecentAlbums();
-    renderStats();
-    renderRecentComments();
 
-    function renderRecentAlbums() {
-      const albums = getAlbums().slice(0, 3);
+    onAlbumsChanged(albums => {
       const container = document.getElementById('recentAlbums');
       if (albums.length === 0) {
         container.innerHTML = '<p class="empty-msg">まだアルバムがありません。<a href="albums.html">追加する</a></p>';
-        return;
+      } else {
+        container.innerHTML = albums.slice(0, 3).map(a => `
+          <a href="album-detail.html?id=${a.id}" class="card">
+            <div class="card-img" style="background-color:${a.color}">
+              <span class="card-emoji">${a.emoji}</span>
+            </div>
+            <div class="card-body">
+              <h3>${a.title}</h3>
+              <p class="card-date">${a.date}</p>
+              <p class="card-desc">${a.description}</p>
+              <span class="card-tag">${a.location}</span>
+            </div>
+          </a>
+        `).join('');
       }
-      container.innerHTML = albums.map(a => `
-        <a href="album-detail.html?id=${a.id}" class="card">
-          <div class="card-img" style="background-color:${a.color}">
-            <span class="card-emoji">${a.emoji}</span>
-          </div>
-          <div class="card-body">
-            <h3>${a.title}</h3>
-            <p class="card-date">${a.date}</p>
-            <p class="card-desc">${a.description}</p>
-            <span class="card-tag">${a.location}</span>
-          </div>
-        </a>
-      `).join('');
-    }
-
-    function renderStats() {
-      const albums = getAlbums();
-      const comments = getComments();
       const totalPhotos = albums.reduce((sum, a) => sum + (a.photos ? a.photos.length : 0), 0);
       document.getElementById('totalMountains').textContent = albums.length;
       document.getElementById('totalPhotos').textContent = totalPhotos;
-      document.getElementById('totalComments').textContent = comments.length;
-    }
+    });
 
-    function renderRecentComments() {
-      const comments = getComments().slice(-3).reverse();
+    onCommentsChanged(comments => {
+      document.getElementById('totalComments').textContent = comments.length;
       const container = document.getElementById('recentComments');
       if (comments.length === 0) {
         container.innerHTML = '<p class="empty-msg">まだコメントがありません。</p>';
         return;
       }
-      container.innerHTML = comments.map(c => `
+      container.innerHTML = comments.slice(-3).reverse().map(c => `
         <div class="comment-preview-item">
           <span class="comment-author">${c.name}</span>
           <span class="comment-text">${c.text.slice(0, 60)}${c.text.length > 60 ? '…' : ''}</span>
           <span class="comment-date">${c.date}</span>
         </div>
       `).join('');
-    }
+    });
 
     function logout() {
       sessionStorage.removeItem('yamapper_auth');
       window.location.href = 'index.html';
     }
+    window.logout = logout;
   </script>
 </body>
 </html>

@@ -34,29 +34,29 @@
         <label>メッセージ</label>
         <textarea id="cText" placeholder="感想・メッセージをどうぞ" rows="4"></textarea>
       </div>
-      <button class="btn-primary" onclick="postComment()">投稿する</button>
+      <button class="btn-primary" id="postBtn" onclick="postComment()">投稿する</button>
     </div>
-
-    <div class="comments-list" id="commentsList"></div>
+    <div class="comments-list" id="commentsList">
+      <p class="empty-msg">読み込み中…</p>
+    </div>
   </main>
 
   <footer class="footer">
     <p>⛰️ やまっぺ &copy; 2026</p>
   </footer>
 
-  <script src="js/data.js"></script>
   <script src="js/auth.js"></script>
-  <script>
+  <script type="module">
+    import { onCommentsChanged, addComment, removeComment } from './js/data.js';
     checkAuth();
 
-    function renderComments() {
-      const comments = getComments().slice().reverse();
+    onCommentsChanged(comments => {
       const list = document.getElementById('commentsList');
       if (comments.length === 0) {
         list.innerHTML = '<p class="empty-msg">まだコメントがありません。最初のコメントを残しましょう！</p>';
         return;
       }
-      list.innerHTML = comments.map(c => `
+      list.innerHTML = [...comments].reverse().map(c => `
         <div class="comment-card">
           <div class="comment-header">
             <span class="comment-avatar">${c.name.charAt(0)}</span>
@@ -64,43 +64,37 @@
               <strong>${c.name}</strong>
               <span class="comment-date">${c.date}</span>
             </div>
-            <button class="btn-danger-sm" onclick="deleteComment('${c.id}')">削除</button>
+            <button class="btn-danger-sm" onclick="window.doDelete('${c.id}')">削除</button>
           </div>
           <p class="comment-body">${c.text}</p>
         </div>
       `).join('');
-    }
+    });
 
-    function postComment() {
+    window.postComment = async () => {
       const name = document.getElementById('cName').value.trim();
       const text = document.getElementById('cText').value.trim();
       if (!name) { alert('お名前を入力してください'); return; }
       if (!text) { alert('メッセージを入力してください'); return; }
-      const comments = getComments();
-      comments.push({
-        id: Date.now().toString(),
-        name, text,
-        date: new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
-      });
-      saveComments(comments);
+      const btn = document.getElementById('postBtn');
+      btn.textContent = '投稿中…';
+      btn.disabled = true;
+      await addComment(name, text);
       document.getElementById('cName').value = '';
       document.getElementById('cText').value = '';
-      renderComments();
-    }
+      btn.textContent = '投稿する';
+      btn.disabled = false;
+    };
 
-    function deleteComment(id) {
+    window.doDelete = async (id) => {
       if (!confirm('このコメントを削除しますか？')) return;
-      const comments = getComments().filter(c => c.id !== id);
-      saveComments(comments);
-      renderComments();
-    }
+      await removeComment(id);
+    };
 
-    function logout() {
+    window.logout = () => {
       sessionStorage.removeItem('yamapper_auth');
       window.location.href = 'index.html';
-    }
-
-    renderComments();
+    };
   </script>
 </body>
 </html>

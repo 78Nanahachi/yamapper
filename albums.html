@@ -27,8 +27,9 @@
     <div class="toolbar">
       <button class="btn-primary" onclick="openAddModal()">＋ 新しいアルバムを追加</button>
     </div>
-
-    <div class="cards-grid" id="albumsGrid"></div>
+    <div class="cards-grid" id="albumsGrid">
+      <p class="empty-msg">読み込み中…</p>
+    </div>
   </main>
 
   <!-- アルバム追加モーダル -->
@@ -67,7 +68,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn-outline" onclick="closeModal()">キャンセル</button>
-        <button class="btn-primary" onclick="addAlbum()">追加する</button>
+        <button class="btn-primary" id="addBtn" onclick="addAlbum()">追加する</button>
       </div>
     </div>
   </div>
@@ -76,15 +77,14 @@
     <p>⛰️ やまっぺ &copy; 2026</p>
   </footer>
 
-  <script src="js/data.js"></script>
   <script src="js/auth.js"></script>
-  <script>
+  <script type="module">
+    import { onAlbumsChanged, saveAlbum, deleteAlbumById } from './js/data.js';
     checkAuth();
 
     const COLORS = ['#8B6F47','#4A7C59','#5B7EA6','#7B6BA0','#A05C5C','#5C8A7A','#7A7A4A'];
 
-    function renderAlbums() {
-      const albums = getAlbums();
+    onAlbumsChanged(albums => {
       const grid = document.getElementById('albumsGrid');
       if (albums.length === 0) {
         grid.innerHTML = '<p class="empty-msg">まだアルバムがありません。「＋ 新しいアルバムを追加」から始めましょう。</p>';
@@ -105,65 +105,66 @@
           </a>
           <div class="card-footer">
             <span class="photo-count">📷 ${a.photos ? a.photos.length : 0}枚</span>
-            <button class="btn-danger-sm" onclick="deleteAlbum('${a.id}')">削除</button>
+            <button class="btn-danger-sm" onclick="window.doDelete('${a.id}')">削除</button>
           </div>
         </div>
       `).join('');
-    }
+    });
 
-    function openAddModal() {
+    window.doDelete = async (id) => {
+      if (!confirm('このアルバムを削除しますか？')) return;
+      await deleteAlbumById(id);
+    };
+
+    window.openAddModal = () => {
       document.getElementById('addModal').style.display = 'flex';
       document.getElementById('newDate').value = new Date().toISOString().slice(0,10);
-    }
+    };
 
-    function closeModal() {
+    window.closeModal = () => {
       document.getElementById('addModal').style.display = 'none';
-    }
+    };
 
-    function selectEmoji(el) {
+    window.selectEmoji = (el) => {
       document.querySelectorAll('.ep-item').forEach(e => e.classList.remove('selected'));
       el.classList.add('selected');
       document.getElementById('newEmoji').value = el.dataset.emoji;
-    }
+    };
 
-    function addAlbum() {
-      const title = document.getElementById('newTitle').value.trim();
-      const date = document.getElementById('newDate').value;
+    window.addAlbum = async () => {
+      const title    = document.getElementById('newTitle').value.trim();
+      const date     = document.getElementById('newDate').value;
       const location = document.getElementById('newLocation').value.trim();
-      const desc = document.getElementById('newDesc').value.trim();
-      const emoji = document.getElementById('newEmoji').value;
+      const desc     = document.getElementById('newDesc').value.trim();
+      const emoji    = document.getElementById('newEmoji').value;
       if (!title) { alert('山の名前を入力してください'); return; }
-      const albums = getAlbums();
-      const color = COLORS[albums.length % COLORS.length];
-      const newAlbum = {
-        id: Date.now().toString(),
-        title, date: date || new Date().toISOString().slice(0,10),
+
+      const btn = document.getElementById('addBtn');
+      btn.textContent = '追加中…';
+      btn.disabled = true;
+
+      const colors = ['#8B6F47','#4A7C59','#5B7EA6','#7B6BA0','#A05C5C','#5C8A7A','#7A7A4A'];
+      const color  = colors[Math.floor(Math.random() * colors.length)];
+      await saveAlbum({
+        title,
+        date: date || new Date().toISOString().slice(0,10),
         location: location || '未設定',
         description: desc || '',
         emoji, color, photos: []
-      };
-      albums.unshift(newAlbum);
-      saveAlbums(albums);
-      closeModal();
-      renderAlbums();
+      });
+
+      btn.textContent = '追加する';
+      btn.disabled = false;
+      window.closeModal();
       document.getElementById('newTitle').value = '';
       document.getElementById('newLocation').value = '';
       document.getElementById('newDesc').value = '';
-    }
+    };
 
-    function deleteAlbum(id) {
-      if (!confirm('このアルバムを削除しますか？')) return;
-      const albums = getAlbums().filter(a => a.id !== id);
-      saveAlbums(albums);
-      renderAlbums();
-    }
-
-    function logout() {
+    window.logout = () => {
       sessionStorage.removeItem('yamapper_auth');
       window.location.href = 'index.html';
-    }
-
-    renderAlbums();
+    };
   </script>
 </body>
 </html>

@@ -110,9 +110,13 @@
       </div>
       <div class="form-group">
         <label>アルバムカバー画像</label>
-        <div class="cover-upload-area" onclick="document.getElementById('coverInput').click()">
+        <div class="cover-upload-area"
+          onclick="document.getElementById('coverInput').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleCoverDrop(event)">
           <div id="coverPreview" class="cover-preview">
-            <span>📷 クリックして画像を選択</span>
+            <span>📷 クリックまたはD&Dで画像を選択</span>
           </div>
           <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="previewCover(event)">
         </div>
@@ -207,18 +211,28 @@
 
     window.previewCover = (event) => {
       const file = event.target.files[0];
-      if (!file) return;
+      if (file) loadCoverPreview(file);
+    };
+
+    window.handleCoverDrop = (event) => {
+      event.preventDefault();
+      event.currentTarget.classList.remove('drag-over');
+      const file = Array.from(event.dataTransfer.files).find(f => f.type.startsWith('image/'));
+      if (file) loadCoverPreview(file);
+    };
+
+    function loadCoverPreview(file) {
       const reader = new FileReader();
       reader.onload = e => {
         coverBase64 = e.target.result;
         const preview = document.getElementById('coverPreview');
-        preview.style.backgroundImage = 'url(' + coverBase64 + ')';
-        preview.style.backgroundSize  = 'cover';
+        preview.style.backgroundImage    = 'url(' + coverBase64 + ')';
+        preview.style.backgroundSize     = 'cover';
         preview.style.backgroundPosition = 'center';
         preview.innerHTML = '';
       };
       reader.readAsDataURL(file);
-    };
+    }
 
     window.saveEdit = async () => {
       const id       = document.getElementById('editId').value;

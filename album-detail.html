@@ -211,7 +211,15 @@
 
     window.uploadPhotos = e => {
       const files = Array.from(e.target.files);
-      if (files.length > 0) uploadFiles(files);
+      if (files.length > 0) {
+        // スマホでチェックマーク押した直後に即時表示
+        const progressWrap = document.getElementById('progressWrap');
+        const progressText = document.getElementById('progressText');
+        progressWrap.style.display = 'block';
+        progressText.textContent = '準備中… しばらくお待ちください';
+        document.getElementById('progressBar').style.width = '5%';
+        uploadFiles(files);
+      }
       e.target.value = '';
     };
 

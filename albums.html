@@ -55,20 +55,72 @@
       <div class="form-group">
         <label>絵文字アイコン</label>
         <div class="emoji-picker">
-          <span class="ep-item selected" data-emoji="⛰️" onclick="selectEmoji(this)">⛰️</span>
-          <span class="ep-item" data-emoji="🏔️" onclick="selectEmoji(this)">🏔️</span>
-          <span class="ep-item" data-emoji="🗻" onclick="selectEmoji(this)">🗻</span>
-          <span class="ep-item" data-emoji="🌄" onclick="selectEmoji(this)">🌄</span>
-          <span class="ep-item" data-emoji="🍂" onclick="selectEmoji(this)">🍂</span>
-          <span class="ep-item" data-emoji="🌸" onclick="selectEmoji(this)">🌸</span>
-          <span class="ep-item" data-emoji="❄️" onclick="selectEmoji(this)">❄️</span>
-          <span class="ep-item" data-emoji="🌿" onclick="selectEmoji(this)">🌿</span>
+          <span class="ep-item selected" data-emoji="⛰️" onclick="selectEmoji(this,'new')">⛰️</span>
+          <span class="ep-item" data-emoji="🏔️" onclick="selectEmoji(this,'new')">🏔️</span>
+          <span class="ep-item" data-emoji="🗻" onclick="selectEmoji(this,'new')">🗻</span>
+          <span class="ep-item" data-emoji="🌄" onclick="selectEmoji(this,'new')">🌄</span>
+          <span class="ep-item" data-emoji="🍂" onclick="selectEmoji(this,'new')">🍂</span>
+          <span class="ep-item" data-emoji="🌸" onclick="selectEmoji(this,'new')">🌸</span>
+          <span class="ep-item" data-emoji="❄️" onclick="selectEmoji(this,'new')">❄️</span>
+          <span class="ep-item" data-emoji="🌿" onclick="selectEmoji(this,'new')">🌿</span>
         </div>
         <input type="hidden" id="newEmoji" value="⛰️">
       </div>
       <div class="modal-actions">
-        <button class="btn-outline" onclick="closeModal()">キャンセル</button>
+        <button class="btn-outline" onclick="closeModal('addModal')">キャンセル</button>
         <button class="btn-primary" id="addBtn" onclick="addAlbum()">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- アルバム編集モーダル -->
+  <div class="modal-overlay" id="editModal" style="display:none">
+    <div class="modal">
+      <h2>アルバムを編集</h2>
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>山の名前</label>
+        <input type="text" id="editTitle" placeholder="例：富士山">
+      </div>
+      <div class="form-group">
+        <label>日付</label>
+        <input type="date" id="editDate">
+      </div>
+      <div class="form-group">
+        <label>場所・エリア</label>
+        <input type="text" id="editLocation" placeholder="例：静岡県・山梨県">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <textarea id="editDesc" placeholder="山行の感想など" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>絵文字アイコン</label>
+        <div class="emoji-picker" id="editEmojiPicker">
+          <span class="ep-item" data-emoji="⛰️" onclick="selectEmoji(this,'edit')">⛰️</span>
+          <span class="ep-item" data-emoji="🏔️" onclick="selectEmoji(this,'edit')">🏔️</span>
+          <span class="ep-item" data-emoji="🗻" onclick="selectEmoji(this,'edit')">🗻</span>
+          <span class="ep-item" data-emoji="🌄" onclick="selectEmoji(this,'edit')">🌄</span>
+          <span class="ep-item" data-emoji="🍂" onclick="selectEmoji(this,'edit')">🍂</span>
+          <span class="ep-item" data-emoji="🌸" onclick="selectEmoji(this,'edit')">🌸</span>
+          <span class="ep-item" data-emoji="❄️" onclick="selectEmoji(this,'edit')">❄️</span>
+          <span class="ep-item" data-emoji="🌿" onclick="selectEmoji(this,'edit')">🌿</span>
+        </div>
+        <input type="hidden" id="editEmoji" value="⛰️">
+      </div>
+      <div class="form-group">
+        <label>アルバムカバー画像</label>
+        <div class="cover-upload-area" onclick="document.getElementById('coverInput').click()">
+          <div id="coverPreview" class="cover-preview">
+            <span>📷 クリックして画像を選択</span>
+          </div>
+          <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="previewCover(event)">
+        </div>
+        <p class="form-hint">設定すると絵文字の代わりにカバー画像が表示されます</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-outline" onclick="closeModal('editModal')">キャンセル</button>
+        <button class="btn-primary" id="editBtn" onclick="saveEdit()">保存する</button>
       </div>
     </div>
   </div>
@@ -79,10 +131,13 @@
 
   <script src="js/auth.js"></script>
   <script type="module">
-    import { onAlbumsChanged, saveAlbum, deleteAlbumById } from './js/data.js';
+    import { onAlbumsChanged, saveAlbum, deleteAlbumById, updateAlbum } from './js/data.js';
     checkAuth();
 
-    const COLORS = ['#8B6F47','#4A7C59','#5B7EA6','#7B6BA0','#A05C5C','#5C8A7A','#7A7A4A'];
+    const CLOUD_NAME    = 'dgsbvnswt';
+    const UPLOAD_PRESET = 'yamapper';
+    let coverBase64 = null;
+    let coverUploading = false;
 
     onAlbumsChanged(albums => {
       const grid = document.getElementById('albumsGrid');
@@ -93,8 +148,8 @@
       grid.innerHTML = albums.map(a => `
         <div class="card">
           <a href="album-detail.html?id=${a.id}" style="text-decoration:none;color:inherit">
-            <div class="card-img" style="background-color:${a.color}">
-              <span class="card-emoji">${a.emoji}</span>
+            <div class="card-img" style="background-color:${a.color}; ${a.coverUrl ? 'background-image:url(' + a.coverUrl + ');background-size:cover;background-position:center;' : ''}">
+              ${!a.coverUrl ? '<span class="card-emoji">' + a.emoji + '</span>' : ''}
             </div>
             <div class="card-body">
               <h3>${a.title}</h3>
@@ -105,7 +160,10 @@
           </a>
           <div class="card-footer">
             <span class="photo-count">📷 ${a.photos ? a.photos.length : 0}枚</span>
-            <button class="btn-danger-sm" onclick="window.doDelete('${a.id}')">削除</button>
+            <div style="display:flex;gap:0.5rem">
+              <button class="btn-outline-sm" onclick="openEditModal(${JSON.stringify(a).split('"').join('&quot;')})">編集</button>
+              <button class="btn-danger-sm" onclick="window.doDelete('${a.id}')">削除</button>
+            </div>
           </div>
         </div>
       `).join('');
@@ -121,14 +179,93 @@
       document.getElementById('newDate').value = new Date().toISOString().slice(0,10);
     };
 
-    window.closeModal = () => {
-      document.getElementById('addModal').style.display = 'none';
+    window.openEditModal = (album) => {
+      document.getElementById('editId').value       = album.id;
+      document.getElementById('editTitle').value    = album.title;
+      document.getElementById('editDate').value     = album.date;
+      document.getElementById('editLocation').value = album.location;
+      document.getElementById('editDesc').value     = album.description;
+      document.getElementById('editEmoji').value    = album.emoji;
+      // 絵文字選択状態を反映
+      document.querySelectorAll('#editEmojiPicker .ep-item').forEach(el => {
+        el.classList.toggle('selected', el.dataset.emoji === album.emoji);
+      });
+      // カバー画像プレビュー
+      const preview = document.getElementById('coverPreview');
+      if (album.coverUrl) {
+        preview.style.backgroundImage = 'url(' + album.coverUrl + ')';
+        preview.style.backgroundSize  = 'cover';
+        preview.style.backgroundPosition = 'center';
+        preview.innerHTML = '';
+      } else {
+        preview.style.backgroundImage = '';
+        preview.innerHTML = '<span>📷 クリックして画像を選択</span>';
+      }
+      coverBase64 = null;
+      document.getElementById('editModal').style.display = 'flex';
     };
 
-    window.selectEmoji = (el) => {
-      document.querySelectorAll('.ep-item').forEach(e => e.classList.remove('selected'));
+    window.previewCover = (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        coverBase64 = e.target.result;
+        const preview = document.getElementById('coverPreview');
+        preview.style.backgroundImage = 'url(' + coverBase64 + ')';
+        preview.style.backgroundSize  = 'cover';
+        preview.style.backgroundPosition = 'center';
+        preview.innerHTML = '';
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.saveEdit = async () => {
+      const id       = document.getElementById('editId').value;
+      const title    = document.getElementById('editTitle').value.trim();
+      const date     = document.getElementById('editDate').value;
+      const location = document.getElementById('editLocation').value.trim();
+      const desc     = document.getElementById('editDesc').value.trim();
+      const emoji    = document.getElementById('editEmoji').value;
+      if (!title) { alert('山の名前を入力してください'); return; }
+
+      const btn = document.getElementById('editBtn');
+      btn.textContent = '保存中…';
+      btn.disabled = true;
+
+      let coverUrl = null;
+      // カバー画像をCloudinaryにアップロード
+      if (coverBase64) {
+        try {
+          const res  = await fetch('https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ file: coverBase64, upload_preset: UPLOAD_PRESET })
+          });
+          const data = await res.json();
+          if (data.secure_url) coverUrl = data.secure_url;
+        } catch(e) { console.error(e); }
+      }
+
+      const updateData = { title, date, location: location || '未設定', description: desc || '', emoji };
+      if (coverUrl) updateData.coverUrl = coverUrl;
+
+      await updateAlbum(id, updateData);
+      btn.textContent = '保存する';
+      btn.disabled = false;
+      coverBase64 = null;
+      closeModal('editModal');
+    };
+
+    window.closeModal = (id) => {
+      document.getElementById(id).style.display = 'none';
+    };
+
+    window.selectEmoji = (el, mode) => {
+      const picker = mode === 'edit' ? '#editEmojiPicker' : '#addModal .emoji-picker';
+      document.querySelectorAll(picker + ' .ep-item').forEach(e => e.classList.remove('selected'));
       el.classList.add('selected');
-      document.getElementById('newEmoji').value = el.dataset.emoji;
+      document.getElementById(mode === 'edit' ? 'editEmoji' : 'newEmoji').value = el.dataset.emoji;
     };
 
     window.addAlbum = async () => {
@@ -138,24 +275,15 @@
       const desc     = document.getElementById('newDesc').value.trim();
       const emoji    = document.getElementById('newEmoji').value;
       if (!title) { alert('山の名前を入力してください'); return; }
-
       const btn = document.getElementById('addBtn');
       btn.textContent = '追加中…';
       btn.disabled = true;
-
       const colors = ['#8B6F47','#4A7C59','#5B7EA6','#7B6BA0','#A05C5C','#5C8A7A','#7A7A4A'];
       const color  = colors[Math.floor(Math.random() * colors.length)];
-      await saveAlbum({
-        title,
-        date: date || new Date().toISOString().slice(0,10),
-        location: location || '未設定',
-        description: desc || '',
-        emoji, color, photos: []
-      });
-
+      await saveAlbum({ title, date: date || new Date().toISOString().slice(0,10), location: location || '未設定', description: desc || '', emoji, color, photos: [] });
       btn.textContent = '追加する';
       btn.disabled = false;
-      window.closeModal();
+      closeModal('addModal');
       document.getElementById('newTitle').value = '';
       document.getElementById('newLocation').value = '';
       document.getElementById('newDesc').value = '';

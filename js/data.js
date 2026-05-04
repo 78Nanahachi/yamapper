@@ -97,8 +97,13 @@ async function removePhotoComment(albumId, commentId) {
   await deleteDoc(doc(db, 'albums', albumId, 'photoComments', commentId));
 }
 
+// アルバムを更新
+async function updateAlbum(id, data) {
+  await updateDoc(doc(db, 'albums', id), data);
+}
+
 export {
-  db, getAlbums, saveAlbum, deleteAlbumById, getAlbum, savePhotos, onAlbumsChanged,
+  db, getAlbums, saveAlbum, deleteAlbumById, getAlbum, savePhotos, onAlbumsChanged, updateAlbum,
   onCommentsChanged, addComment, removeComment,
   onPhotoCommentsChanged, addPhotoComment, removePhotoComment
 };

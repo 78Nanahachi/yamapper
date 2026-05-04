@@ -31,8 +31,6 @@
   </div>
 
   <main class="main-content">
-
-    <!-- ドラッグ＆ドロップエリア -->
     <div class="drop-zone" id="dropZone"
       onclick="document.getElementById('photoInput').click()"
       ondragover="handleDragOver(event)"
@@ -46,7 +44,6 @@
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="uploadPhotos(event)">
     </div>
 
-    <!-- アップロード進捗バー -->
     <div class="progress-wrap" id="progressWrap" style="display:none">
       <div class="progress-bar" id="progressBar"></div>
       <span id="progressText">0 / 0 枚アップロード中…</span>
@@ -57,12 +54,23 @@
     </div>
   </main>
 
-  <!-- ライトボックス -->
-  <div class="lightbox" id="lightbox" style="display:none" onclick="closeLightbox()">
+  <!-- ライトボックス（写真コメント付き） -->
+  <div class="lightbox" id="lightbox" style="display:none">
     <button class="lb-close" onclick="closeLightbox()">✕</button>
-    <button class="lb-prev" onclick="event.stopPropagation();changePhoto(-1)">‹</button>
-    <img id="lbImg" src="" alt="">
-    <button class="lb-next" onclick="event.stopPropagation();changePhoto(1)">›</button>
+    <button class="lb-prev" onclick="changePhoto(-1)">‹</button>
+    <div class="lb-main">
+      <img id="lbImg" src="" alt="">
+      <div class="lb-comment-panel">
+        <h3 class="lb-comment-title">💬 コメント</h3>
+        <div class="lb-comments" id="lbComments"></div>
+        <div class="lb-comment-form">
+          <input type="text" id="lbName" placeholder="お名前">
+          <textarea id="lbText" placeholder="コメントを入力…" rows="2"></textarea>
+          <button class="btn-primary" onclick="postPhotoComment()">投稿</button>
+        </div>
+      </div>
+    </div>
+    <button class="lb-next" onclick="changePhoto(1)">›</button>
     <p id="lbCaption" class="lb-caption"></p>
   </div>
 
@@ -70,90 +78,140 @@
     <p>⛰️ やまっぺ &copy; 2026</p>
   </footer>
 
-  <script src="js/data.js"></script>
   <script src="js/auth.js"></script>
-  <script>
-    // =============================
-    // Cloudinary 設定
-    // =============================
-    const CLOUD_NAME   = 'dgsbvnswt';
-    const UPLOAD_PRESET = 'yamapper';
-    const UPLOAD_URL   = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+  <script type="module">
+    import { getAlbum, savePhotos, onPhotoCommentsChanged, addPhotoComment, removePhotoComment } from './js/data.js';
 
-    // =============================
-    // 初期化
-    // =============================
     checkAuth();
+
+    const CLOUD_NAME    = 'dgsbvnswt';
+    const UPLOAD_PRESET = 'yamapper_preset';
+    const UPLOAD_URL    = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload';
 
     const params  = new URLSearchParams(window.location.search);
     const albumId = params.get('id');
     let currentPhotos = [];
     let lbIndex = 0;
+    let unsubPhotoComments = null;
 
-    function loadAlbum() {
-      const albums = getAlbums();
-      const album  = albums.find(a => a.id === albumId);
+    // アルバム読み込み
+    async function loadAlbum() {
+      const album = await getAlbum(albumId);
       if (!album) { window.location.href = 'albums.html'; return; }
-
-      document.title = `やまっぺ - ${album.title}`;
+      document.title = 'やまっぺ - ' + album.title;
       document.getElementById('albumEmoji').textContent  = album.emoji;
       document.getElementById('albumTitle').textContent  = album.title;
-      document.getElementById('albumMeta').textContent   = `${album.date}　📍 ${album.location}`;
+      document.getElementById('albumMeta').textContent   = album.date + '　📍 ' + album.location;
       document.getElementById('albumDesc').textContent   = album.description;
       document.getElementById('albumHeader').style.background = album.color;
-
       currentPhotos = album.photos || [];
       renderPhotos();
     }
 
-    // =============================
-    // 写真表示
-    // =============================
+    // 写真グリッド表示（コメント数バッジ付き）
     function renderPhotos() {
       const grid = document.getElementById('photoGrid');
       if (currentPhotos.length === 0) {
-        grid.innerHTML = '<p class="empty-msg">まだ写真がありません。「📷 写真を追加」から追加できます。</p>';
+        grid.innerHTML = '<p class="empty-msg">まだ写真がありません。上のエリアから追加できます。</p>';
         return;
       }
       grid.innerHTML = currentPhotos.map((p, i) => `
         <div class="photo-item" onclick="openLightbox(${i})">
           <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
           <div class="photo-overlay">
-            <span>${p.caption || ''}</span>
+            <span class="photo-comment-badge" id="badge-${i}">💬 -</span>
             <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
           </div>
         </div>
       `).join('');
+      // 各写真のコメント数を取得して表示
+      currentPhotos.forEach((_, i) => loadCommentCount(i));
     }
 
-    // =============================
-    // ドラッグ＆ドロップ
-    // =============================
-    function handleDragOver(e) {
-      e.preventDefault();
-      document.getElementById('dropZone').classList.add('drag-over');
+    // コメント数バッジ更新
+    function loadCommentCount(photoIndex) {
+      import('./js/data.js').then(({ onPhotoCommentsChanged }) => {
+        onPhotoCommentsChanged(albumId, photoIndex, comments => {
+          const badge = document.getElementById('badge-' + photoIndex);
+          if (badge) badge.textContent = '💬 ' + comments.length;
+        });
+      });
     }
 
-    function handleDragLeave(e) {
-      document.getElementById('dropZone').classList.remove('drag-over');
+    // ライトボックスを開く
+    function openLightbox(i) {
+      lbIndex = i;
+      document.getElementById('lbImg').src             = currentPhotos[i].src;
+      document.getElementById('lbCaption').textContent = currentPhotos[i].caption || '';
+      document.getElementById('lightbox').style.display = 'flex';
+      loadPhotoComments(i);
     }
 
-    function handleDrop(e) {
+    // 写真コメントを読み込む
+    function loadPhotoComments(photoIndex) {
+      if (unsubPhotoComments) unsubPhotoComments();
+      unsubPhotoComments = onPhotoCommentsChanged(albumId, photoIndex, comments => {
+        const container = document.getElementById('lbComments');
+        if (comments.length === 0) {
+          container.innerHTML = '<p class="lb-no-comment">まだコメントがありません</p>';
+          return;
+        }
+        container.innerHTML = comments.map(c => `
+          <div class="lb-comment-item">
+            <span class="lb-comment-avatar">${c.name.charAt(0)}</span>
+            <div class="lb-comment-body">
+              <strong>${c.name}</strong>
+              <span class="lb-comment-date">${c.date}</span>
+              <p>${c.text}</p>
+            </div>
+            <button class="btn-del-comment" onclick="window.delPhotoComment('${c.id}')">✕</button>
+          </div>
+        `).join('');
+      });
+    }
+
+    // 写真コメント投稿
+    window.postPhotoComment = async () => {
+      const name = document.getElementById('lbName').value.trim();
+      const text = document.getElementById('lbText').value.trim();
+      if (!name) { alert('お名前を入力してください'); return; }
+      if (!text) { alert('コメントを入力してください'); return; }
+      await addPhotoComment(albumId, lbIndex, name, text);
+      document.getElementById('lbText').value = '';
+    };
+
+    window.delPhotoComment = async (commentId) => {
+      if (!confirm('このコメントを削除しますか？')) return;
+      await removePhotoComment(albumId, commentId);
+    };
+
+    function closeLightbox() {
+      document.getElementById('lightbox').style.display = 'none';
+      if (unsubPhotoComments) { unsubPhotoComments(); unsubPhotoComments = null; }
+    }
+
+    function changePhoto(dir) {
+      lbIndex = (lbIndex + dir + currentPhotos.length) % currentPhotos.length;
+      document.getElementById('lbImg').src             = currentPhotos[lbIndex].src;
+      document.getElementById('lbCaption').textContent = currentPhotos[lbIndex].caption || '';
+      loadPhotoComments(lbIndex);
+    }
+
+    // D&D
+    window.handleDragOver  = e => { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); };
+    window.handleDragLeave = e => { document.getElementById('dropZone').classList.remove('drag-over'); };
+    window.handleDrop      = e => {
       e.preventDefault();
       document.getElementById('dropZone').classList.remove('drag-over');
       const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
       if (files.length > 0) uploadFiles(files);
-    }
+    };
 
-    // =============================
-    // Cloudinaryへアップロード
-    // =============================
-    async function uploadPhotos(event) {
-      const files = Array.from(event.target.files);
-      if (files.length === 0) return;
-      await uploadFiles(files);
-      event.target.value = '';
-    }
+    window.uploadPhotos = e => {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) uploadFiles(files);
+      e.target.value = '';
+    };
 
     function toBase64(file) {
       return new Promise((resolve, reject) => {
@@ -168,92 +226,50 @@
       const progressWrap = document.getElementById('progressWrap');
       const progressBar  = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
-
       progressWrap.style.display = 'block';
       let done = 0;
 
       for (const file of files) {
-        progressText.textContent = `${done} / ${files.length} 枚アップロード中…`;
-        progressBar.style.width  = `${Math.round(done / files.length * 100)}%`;
-
+        progressText.textContent = done + ' / ' + files.length + ' 枚アップロード中…';
+        progressBar.style.width  = Math.round(done / files.length * 100) + '%';
         try {
           const base64 = await toBase64(file);
-          const res = await fetch(UPLOAD_URL, {
+          const res    = await fetch(UPLOAD_URL, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-              file:          base64,
-              upload_preset: UPLOAD_PRESET
-            })
+            body:    JSON.stringify({ file: base64, upload_preset: UPLOAD_PRESET })
           });
           const data = await res.json();
-
           if (data.secure_url) {
-            currentPhotos.push({
-              src:      data.secure_url,
-              publicId: data.public_id,
-              caption:  file.name.replace(/\.[^/.]+$/, '')
-            });
+            currentPhotos.push({ src: data.secure_url, publicId: data.public_id, caption: file.name.replace(/\.[^/.]+$/, '') });
           } else {
             console.error('Upload error:', data);
           }
-        } catch (err) {
-          console.error('Upload failed:', err);
-        }
+        } catch(err) { console.error('Upload failed:', err); }
         done++;
       }
 
       progressBar.style.width  = '100%';
-      progressText.textContent = `${done} 枚のアップロード完了！`;
+      progressText.textContent = done + ' 枚のアップロード完了！';
       setTimeout(() => { progressWrap.style.display = 'none'; }, 2000);
-
-      savePhotos();
+      await savePhotos(albumId, currentPhotos);
       renderPhotos();
     }
 
-    // =============================
-    // 写真削除（localStorageのURLのみ削除）
-    // =============================
-    function deletePhoto(index) {
-      if (!confirm('この写真をアルバムから削除しますか？\n（Cloudinary上の画像は残ります）')) return;
+    window.deletePhoto = async (index) => {
+      if (!confirm('この写真をアルバムから削除しますか？')) return;
       currentPhotos.splice(index, 1);
-      savePhotos();
+      await savePhotos(albumId, currentPhotos);
       renderPhotos();
-    }
+    };
 
-    function savePhotos() {
-      const albums = getAlbums();
-      const idx    = albums.findIndex(a => a.id === albumId);
-      if (idx !== -1) {
-        albums[idx].photos = currentPhotos;
-        saveAlbums(albums);
-      }
-    }
+    window.closeLightbox = closeLightbox;
+    window.changePhoto   = changePhoto;
 
-    // =============================
-    // ライトボックス
-    // =============================
-    function openLightbox(i) {
-      lbIndex = i;
-      document.getElementById('lbImg').src             = currentPhotos[i].src;
-      document.getElementById('lbCaption').textContent = currentPhotos[i].caption || '';
-      document.getElementById('lightbox').style.display = 'flex';
-    }
-
-    function closeLightbox() {
-      document.getElementById('lightbox').style.display = 'none';
-    }
-
-    function changePhoto(dir) {
-      lbIndex = (lbIndex + dir + currentPhotos.length) % currentPhotos.length;
-      document.getElementById('lbImg').src             = currentPhotos[lbIndex].src;
-      document.getElementById('lbCaption').textContent = currentPhotos[lbIndex].caption || '';
-    }
-
-    function logout() {
+    window.logout = () => {
       sessionStorage.removeItem('yamapper_auth');
       window.location.href = 'index.html';
-    }
+    };
 
     loadAlbum();
   </script>

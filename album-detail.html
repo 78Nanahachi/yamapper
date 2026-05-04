@@ -178,6 +178,7 @@
       if (!name) { alert('お名前を入力してください'); return; }
       if (!text) { alert('コメントを入力してください'); return; }
       await addPhotoComment(albumId, lbIndex, name, text);
+      document.getElementById('lbName').value = '';
       document.getElementById('lbText').value = '';
     };
 

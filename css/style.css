@@ -771,12 +771,10 @@ body {
   border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
   cursor: grab;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.2s;
   pointer-events: none;
 }
-
-.photo-item:hover .sort-handle { opacity: 1; }
 
 .photo-item.dragging {
   opacity: 0.4;

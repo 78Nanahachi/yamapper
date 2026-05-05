@@ -104,8 +104,19 @@ async function updateAlbum(id, data) {
   await updateDoc(doc(db, 'albums', id), data);
 }
 
+// 全アルバムの写真・動画コメント数を集計
+async function countAllPhotoComments(albums) {
+  let total = 0;
+  for (const album of albums) {
+    const snap = await getDocs(collection(db, 'albums', album.id, 'photoComments'));
+    total += snap.size;
+  }
+  return total;
+}
+
 export {
   db, getAlbums, saveAlbum, deleteAlbumById, getAlbum, savePhotos, onAlbumsChanged, updateAlbum,
   onCommentsChanged, addComment, removeComment,
-  onPhotoCommentsChanged, addPhotoComment, removePhotoComment
+  onPhotoCommentsChanged, addPhotoComment, removePhotoComment,
+  countAllPhotoComments
 };

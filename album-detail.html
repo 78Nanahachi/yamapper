@@ -118,7 +118,7 @@
       renderPhotos();
     }
 
-    // グリッド表示（写真・動画対応）
+    // グリッド表示（写真・動画対応・並び替えD&D付き）
     function renderPhotos() {
       const grid = document.getElementById('photoGrid');
       if (currentPhotos.length === 0) {
@@ -128,27 +128,81 @@
       grid.innerHTML = currentPhotos.map((p, i) => {
         if (p.type === 'video') {
           return `
-            <div class="photo-item video-item" onclick="openLightbox(${i})">
+            <div class="photo-item video-item" draggable="true"
+              data-index="${i}"
+              ondragstart="sortDragStart(event)"
+              ondragover="sortDragOver(event)"
+              ondragleave="sortDragLeave(event)"
+              ondrop="sortDrop(event)"
+              ondragend="sortDragEnd(event)"
+              onclick="openLightbox(${i})">
               <video src="${p.src}" class="video-thumb" muted playsinline preload="metadata"></video>
               <div class="video-play-icon">▶</div>
               <div class="photo-overlay">
                 <span class="photo-comment-badge" id="badge-${i}">💬 -</span>
                 <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
               </div>
+              <div class="sort-handle">⠿</div>
             </div>`;
         } else {
           return `
-            <div class="photo-item" onclick="openLightbox(${i})">
+            <div class="photo-item" draggable="true"
+              data-index="${i}"
+              ondragstart="sortDragStart(event)"
+              ondragover="sortDragOver(event)"
+              ondragleave="sortDragLeave(event)"
+              ondrop="sortDrop(event)"
+              ondragend="sortDragEnd(event)"
+              onclick="openLightbox(${i})">
               <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
               <div class="photo-overlay">
                 <span class="photo-comment-badge" id="badge-${i}">💬 -</span>
                 <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
               </div>
+              <div class="sort-handle">⠿</div>
             </div>`;
         }
       }).join('');
       currentPhotos.forEach((_, i) => loadCommentCount(i));
     }
+
+    // 並び替えD&D
+    let dragSrcIndex = null;
+
+    window.sortDragStart = (e) => {
+      dragSrcIndex = parseInt(e.currentTarget.dataset.index);
+      e.currentTarget.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    };
+
+    window.sortDragOver = (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      e.currentTarget.classList.add('drag-target');
+    };
+
+    window.sortDragLeave = (e) => {
+      e.currentTarget.classList.remove('drag-target');
+    };
+
+    window.sortDrop = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.remove('drag-target');
+      const dropIndex = parseInt(e.currentTarget.dataset.index);
+      if (dragSrcIndex === null || dragSrcIndex === dropIndex) return;
+      // 並び替え実行
+      const moved = currentPhotos.splice(dragSrcIndex, 1)[0];
+      currentPhotos.splice(dropIndex, 0, moved);
+      await savePhotos(albumId, currentPhotos);
+      renderPhotos();
+    };
+
+    window.sortDragEnd = (e) => {
+      e.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+      dragSrcIndex = null;
+    };
 
     // コメント数バッジ
     function loadCommentCount(photoIndex) {

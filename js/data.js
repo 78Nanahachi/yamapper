@@ -44,10 +44,12 @@ async function savePhotos(albumId, photos) {
   await updateDoc(doc(db, 'albums', albumId), { photos });
 }
 
-// アルバム一覧をリアルタイム監視
+// アルバム一覧をリアルタイム監視（山行日付の新しい順）
 function onAlbumsChanged(callback) {
-  return onSnapshot(query(collection(db, 'albums'), orderBy('createdAt', 'desc')), snap => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  return onSnapshot(collection(db, 'albums'), snap => {
+    const albums = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    albums.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    callback(albums);
   });
 }
 

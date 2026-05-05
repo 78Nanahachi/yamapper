@@ -46,13 +46,9 @@
       <input type="file" id="mediaInput" accept="image/*,video/*" multiple style="display:none" onchange="uploadMedia(event)">
     </div>
 
-    <!-- 動画圧縮オプション -->
+    <!-- 動画説明 -->
     <div class="video-option-bar">
-      <label class="compress-toggle">
-        <input type="checkbox" id="compressToggle" checked>
-        <span class="compress-label">動画を圧縮する</span>
-      </label>
-      <p class="compress-hint">容量節約のため動画は圧縮されます。ただしMonthly圧縮処理上限を超えた場合は圧縮なしをお試しください。</p>
+      <p class="compress-hint">📹 動画は自動的にMP4形式に変換・圧縮されます（120MBまで）</p>
     </div>
 
     <div class="progress-wrap" id="progressWrap" style="display:none">
@@ -300,12 +296,10 @@
 
           if (isVideo) {
             // 動画はFormData方式（大容量対応）
+            // 圧縮はCloudinaryのプリセット側で設定
             const fd = new FormData();
             fd.append('file', file);
             fd.append('upload_preset', UPLOAD_PRESET);
-            if (useCompress) {
-              fd.append('eager', 'q_auto:low,f_mp4,w_1280,h_720,c_limit');
-            }
             res = await fetch(endpoint, { method: 'POST', body: fd });
           } else {
             // 写真はBase64+JSON方式
@@ -320,8 +314,8 @@
           const data = await res.json();
 
           if (data.secure_url) {
-            const useCompress = isVideo && document.getElementById('compressToggle').checked;
-            const url = useCompress && data.eager && data.eager[0]
+            const useCompress2 = isVideo && document.getElementById('compressToggle').checked;
+            const url = useCompress2 && data.eager && data.eager[0]
               ? data.eager[0].secure_url
               : data.secure_url;
             currentPhotos.push({
@@ -332,7 +326,7 @@
             });
           } else {
             console.error('Upload error:', data);
-            alert(file.name + ' のアップロードに失敗しました。');
+            alert('エラー詳細: ' + JSON.stringify(data.error));
           }
         } catch(err) {
           console.error('Upload failed:', err);

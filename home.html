@@ -53,6 +53,10 @@
           <span class="stat-label">写真枚数</span>
         </div>
         <div class="stat-card">
+          <span class="stat-num" id="totalVideos">-</span>
+          <span class="stat-label">動画数</span>
+        </div>
+        <div class="stat-card">
           <span class="stat-num" id="totalComments">-</span>
           <span class="stat-label">コメント</span>
         </div>
@@ -98,9 +102,11 @@
           </a>
         `).join('');
       }
-      const totalPhotos = albums.reduce((sum, a) => sum + (a.photos ? a.photos.length : 0), 0);
+      const totalPhotos = albums.reduce((sum, a) => sum + (a.photos ? a.photos.filter(p => p.type !== 'video').length : 0), 0);
+      const totalVideos = albums.reduce((sum, a) => sum + (a.photos ? a.photos.filter(p => p.type === 'video').length : 0), 0);
       document.getElementById('totalMountains').textContent = albums.length;
       document.getElementById('totalPhotos').textContent = totalPhotos;
+      document.getElementById('totalVideos').textContent = totalVideos;
     });
 
     onCommentsChanged(comments => {

@@ -87,7 +87,6 @@
     };
 
     window.doDelete = async (id) => {
-      if (!confirm('このコメントを削除しますか？')) return;
       await removeComment(id);
     };
 

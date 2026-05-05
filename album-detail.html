@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v3 -->
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -129,16 +129,16 @@
         const isVideo = p.type === 'video';
         if (isVideo) {
           return `
-            <div class="photo-wrapper">
+            <div class="photo-wrapper"
+              ondragover="sortDragOver(event)"
+              ondragleave="sortDragLeave(event)"
+              ondrop="sortDrop(event,${i})">
               <div class="sort-handle"
                 draggable="true"
                 data-index="${i}"
-                ondragstart="sortDragStart(event)"
-                ondragover="sortDragOver(event)"
-                ondragleave="sortDragLeave(event)"
-                ondrop="sortDrop(event)"
+                ondragstart="sortDragStart(event,${i})"
                 ondragend="sortDragEnd(event)"
-                onclick="event.stopPropagation()">⠿ 移動</div>
+                onclick="event.stopPropagation()">⠿</div>
               <div class="photo-item video-item" onclick="openLightbox(${i})">
                 <video src="${p.src}" class="video-thumb" muted playsinline preload="metadata"></video>
                 <div class="video-play-icon">▶</div>
@@ -150,16 +150,16 @@
             </div>`;
         } else {
           return `
-            <div class="photo-wrapper">
+            <div class="photo-wrapper"
+              ondragover="sortDragOver(event)"
+              ondragleave="sortDragLeave(event)"
+              ondrop="sortDrop(event,${i})">
               <div class="sort-handle"
                 draggable="true"
                 data-index="${i}"
-                ondragstart="sortDragStart(event)"
-                ondragover="sortDragOver(event)"
-                ondragleave="sortDragLeave(event)"
-                ondrop="sortDrop(event)"
+                ondragstart="sortDragStart(event,${i})"
                 ondragend="sortDragEnd(event)"
-                onclick="event.stopPropagation()">⠿ 移動</div>
+                onclick="event.stopPropagation()">⠿</div>
               <div class="photo-item" onclick="openLightbox(${i})">
                 <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
                 <div class="photo-overlay">
@@ -176,10 +176,10 @@
     // 並び替えD&D
     let dragSrcIndex = null;
 
-    window.sortDragStart = (e) => {
-      dragSrcIndex = parseInt(e.currentTarget.dataset.index);
-      e.currentTarget.classList.add('dragging');
+    window.sortDragStart = (e, index) => {
+      dragSrcIndex = index;
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', index);
     };
 
     window.sortDragOver = (e) => {
@@ -192,22 +192,21 @@
       e.currentTarget.classList.remove('drag-target');
     };
 
-    window.sortDrop = async (e) => {
+    window.sortDrop = async (e, dropIndex) => {
       e.preventDefault();
       e.stopPropagation();
       e.currentTarget.classList.remove('drag-target');
-      const dropIndex = parseInt(e.currentTarget.dataset.index);
       if (dragSrcIndex === null || dragSrcIndex === dropIndex) return;
       const moved = currentPhotos.splice(dragSrcIndex, 1)[0];
       currentPhotos.splice(dropIndex, 0, moved);
+      dragSrcIndex = null;
       await savePhotos(albumId, currentPhotos);
       renderPhotos();
     };
 
     window.sortDragEnd = (e) => {
-      e.currentTarget.classList.remove('dragging');
-      document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
       dragSrcIndex = null;
+      document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
     };
 
     // コメント数バッジ

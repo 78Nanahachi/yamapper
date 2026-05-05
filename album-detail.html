@@ -130,15 +130,16 @@
         if (isVideo) {
           return `
             <div class="photo-wrapper">
-              <div class="sort-handle" onclick="event.stopPropagation()">⠿ 移動</div>
-              <div class="photo-item video-item" draggable="true"
+              <div class="sort-handle"
+                draggable="true"
                 data-index="${i}"
                 ondragstart="sortDragStart(event)"
                 ondragover="sortDragOver(event)"
                 ondragleave="sortDragLeave(event)"
                 ondrop="sortDrop(event)"
                 ondragend="sortDragEnd(event)"
-                onclick="openLightbox(${i})">
+                onclick="event.stopPropagation()">⠿ 移動</div>
+              <div class="photo-item video-item" onclick="openLightbox(${i})">
                 <video src="${p.src}" class="video-thumb" muted playsinline preload="metadata"></video>
                 <div class="video-play-icon">▶</div>
                 <div class="photo-overlay">
@@ -150,15 +151,16 @@
         } else {
           return `
             <div class="photo-wrapper">
-              <div class="sort-handle" onclick="event.stopPropagation()">⠿ 移動</div>
-              <div class="photo-item" draggable="true"
+              <div class="sort-handle"
+                draggable="true"
                 data-index="${i}"
                 ondragstart="sortDragStart(event)"
                 ondragover="sortDragOver(event)"
                 ondragleave="sortDragLeave(event)"
                 ondrop="sortDrop(event)"
                 ondragend="sortDragEnd(event)"
-                onclick="openLightbox(${i})">
+                onclick="event.stopPropagation()">⠿ 移動</div>
+              <div class="photo-item" onclick="openLightbox(${i})">
                 <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
                 <div class="photo-overlay">
                   <span class="photo-comment-badge" id="badge-${i}">💬 -</span>

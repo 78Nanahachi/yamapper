@@ -779,7 +779,11 @@ body {
   letter-spacing: 0.05em;
 }
 
-.sort-handle:active { cursor: grabbing; }
+.photo-wrapper.drag-target .photo-item {
+  opacity: 0.4;
+  transform: scale(0.97);
+  transition: opacity 0.15s, transform 0.15s;
+}
 
 .photo-item.dragging {
   opacity: 0.4;

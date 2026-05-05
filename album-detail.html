@@ -293,23 +293,27 @@
         progressBar.style.width  = Math.round(done / files.length * 100) + '%';
 
         try {
-          const base64   = await toBase64(file);
           const endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/' + (isVideo ? 'video' : 'image') + '/upload';
           const useCompress = isVideo && document.getElementById('compressToggle').checked;
-          const body = {
-            file:          base64,
-            upload_preset: UPLOAD_PRESET,
-          };
-          // 動画は圧縮モードの場合のみeager変換
-          if (useCompress) {
-            body.eager = [{ quality: 'auto', fetch_format: 'mp4' }];
+          let res;
+
+          if (isVideo) {
+            // 動画はFormData方式（大容量対応）
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('upload_preset', UPLOAD_PRESET);
+            if (useCompress) fd.append('eager', 'q_auto,f_mp4');
+            res = await fetch(endpoint, { method: 'POST', body: fd });
+          } else {
+            // 写真はBase64+JSON方式
+            const base64 = await toBase64(file);
+            res = await fetch(endpoint, {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ file: base64, upload_preset: UPLOAD_PRESET })
+            });
           }
 
-          const res  = await fetch(endpoint, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(body)
-          });
           const data = await res.json();
 
           if (data.secure_url) {

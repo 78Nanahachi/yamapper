@@ -748,3 +748,14 @@ body {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
+
+/* 記録欄5列対応 */
+.stats-grid {
+  grid-template-columns: repeat(5, 1fr) !important;
+}
+
+@media (max-width: 700px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}

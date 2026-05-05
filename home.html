@@ -60,6 +60,10 @@
           <span class="stat-num" id="totalComments">-</span>
           <span class="stat-label">コメント</span>
         </div>
+        <div class="stat-card">
+          <span class="stat-num" id="totalPhotoComments">-</span>
+          <span class="stat-label">写真・動画コメント</span>
+        </div>
       </div>
     </section>
 
@@ -80,7 +84,7 @@
 
   <script src="js/auth.js"></script>
   <script type="module">
-    import { onAlbumsChanged, onCommentsChanged } from './js/data.js';
+    import { onAlbumsChanged, onCommentsChanged, countAllPhotoComments } from './js/data.js';
     checkAuth();
 
     onAlbumsChanged(albums => {
@@ -107,6 +111,11 @@
       document.getElementById('totalMountains').textContent = albums.length;
       document.getElementById('totalPhotos').textContent = totalPhotos;
       document.getElementById('totalVideos').textContent = totalVideos;
+
+      // 写真・動画コメント数を集計
+      countAllPhotoComments(albums).then(count => {
+        document.getElementById('totalPhotoComments').textContent = count;
+      });
     });
 
     onCommentsChanged(comments => {

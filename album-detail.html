@@ -40,9 +40,18 @@
       <div class="drop-zone-inner">
         <span class="drop-icon">📷🎬</span>
         <p class="drop-main">写真・動画をここにドラッグ＆ドロップ</p>
-        <p class="drop-sub">または クリックしてファイルを選択（動画は50MBまで）</p>
+        <p class="drop-sub">または クリックしてファイルを選択（動画は120MBまで）</p>
       </div>
       <input type="file" id="mediaInput" accept="image/*,video/*" multiple style="display:none" onchange="uploadMedia(event)">
+    </div>
+
+    <!-- 動画圧縮オプション -->
+    <div class="video-option-bar">
+      <label class="compress-toggle">
+        <input type="checkbox" id="compressToggle" checked>
+        <span class="compress-label">動画を圧縮する</span>
+      </label>
+      <p class="compress-hint">容量節約のため動画は圧縮されます。ただしMonthly圧縮処理上限を超えた場合は圧縮なしをお試しください。</p>
     </div>
 
     <div class="progress-wrap" id="progressWrap" style="display:none">
@@ -90,7 +99,7 @@
 
     const CLOUD_NAME    = 'dgsbvnswt';
     const UPLOAD_PRESET = 'yamapper';
-    const MAX_VIDEO_MB  = 50;
+    const MAX_VIDEO_MB  = 120;
 
     const params  = new URLSearchParams(window.location.search);
     const albumId = params.get('id');
@@ -286,12 +295,13 @@
         try {
           const base64   = await toBase64(file);
           const endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/' + (isVideo ? 'video' : 'image') + '/upload';
-          const body     = {
+          const useCompress = isVideo && document.getElementById('compressToggle').checked;
+          const body = {
             file:          base64,
             upload_preset: UPLOAD_PRESET,
           };
-          // 動画は自動圧縮・品質最適化
-          if (isVideo) {
+          // 動画は圧縮モードの場合のみeager変換
+          if (useCompress) {
             body.eager = [{ quality: 'auto', fetch_format: 'mp4' }];
           }
 
@@ -303,8 +313,8 @@
           const data = await res.json();
 
           if (data.secure_url) {
-            // 動画はeager変換後のURLを優先使用（圧縮済み）
-            const url = isVideo && data.eager && data.eager[0]
+            const useCompress = isVideo && document.getElementById('compressToggle').checked;
+            const url = useCompress && data.eager && data.eager[0]
               ? data.eager[0].secure_url
               : data.secure_url;
             currentPhotos.push({

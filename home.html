@@ -86,8 +86,8 @@
       } else {
         container.innerHTML = albums.slice(0, 3).map(a => `
           <a href="album-detail.html?id=${a.id}" class="card">
-            <div class="card-img" style="background-color:${a.color}">
-              <span class="card-emoji">${a.emoji}</span>
+            <div class="card-img" style="background-color:${a.color}; ${a.coverUrl ? 'background-image:url(' + a.coverUrl + ');background-size:cover;background-position:center;' : ''}">
+              ${!a.coverUrl ? '<span class="card-emoji">' + a.emoji + '</span>' : ''}
             </div>
             <div class="card-body">
               <h3>${a.title}</h3>

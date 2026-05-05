@@ -11,7 +11,7 @@
 </head>
 <body>
   <nav class="navbar">
-    <a href="home.html" class="nav-logo">⛰️ やまっぺ<span class="nav-version">v1.2</span></a>
+    <a href="home.html" class="nav-logo">⛰️ やまっぺ<span class="nav-version">v1.1</span></a>
     <div class="nav-links">
       <a href="home.html">ホーム</a>
       <a href="albums.html" class="active">アルバム</a>
@@ -119,6 +119,15 @@
       renderPhotos();
     }
 
+    // CloudinaryのURLからサムネイル画像URLを生成
+    function getVideoThumbnail(videoUrl) {
+      // https://res.cloudinary.com/xxx/video/upload/v123/abc.mp4
+      // → https://res.cloudinary.com/xxx/video/upload/so_0,w_400/v123/abc.jpg
+      return videoUrl
+        .replace('/video/upload/', '/video/upload/so_0,w_400/')
+        .replace(/\.[^/.]+$/, '.jpg');
+    }
+
     // グリッド表示（写真・動画対応・並び替えD&D付き）
     function renderPhotos() {
       const grid = document.getElementById('photoGrid');
@@ -129,6 +138,7 @@
       grid.innerHTML = currentPhotos.map((p, i) => {
         const isVideo = p.type === 'video';
         if (isVideo) {
+          const thumbUrl = getVideoThumbnail(p.src);
           return `
             <div class="photo-wrapper"
               ondragover="sortDragOver(event)"
@@ -141,7 +151,7 @@
                 ondragend="sortDragEnd(event)"
                 onclick="event.stopPropagation()">⠿</div>
               <div class="photo-item video-item" onclick="openLightbox(${i})">
-                <video src="${p.src}" class="video-thumb" muted playsinline preload="metadata"></video>
+                <img src="${thumbUrl}" alt="${p.caption || ''}" loading="lazy" onerror="this.style.background='#333'">
                 <div class="video-play-icon">▶</div>
                 <div class="photo-overlay">
                   <span class="photo-comment-badge" id="badge-${i}">💬 -</span>

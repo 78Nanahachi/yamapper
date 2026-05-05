@@ -291,7 +291,6 @@
 
         try {
           const endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/' + (isVideo ? 'video' : 'image') + '/upload';
-          const useCompress = isVideo && document.getElementById('compressToggle').checked;
           let res;
 
           if (isVideo) {
@@ -314,7 +313,7 @@
           const data = await res.json();
 
           if (data.secure_url) {
-            const useCompress2 = isVideo && document.getElementById('compressToggle').checked;
+            const useCompress2 = false;
             const url = useCompress2 && data.eager && data.eager[0]
               ? data.eager[0].secure_url
               : data.secure_url;

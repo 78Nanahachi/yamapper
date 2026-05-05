@@ -31,35 +31,39 @@
   </div>
 
   <main class="main-content">
+    <!-- アップロードエリア（写真・動画共通） -->
     <div class="drop-zone" id="dropZone"
-      onclick="document.getElementById('photoInput').click()"
+      onclick="document.getElementById('mediaInput').click()"
       ondragover="handleDragOver(event)"
       ondragleave="handleDragLeave(event)"
       ondrop="handleDrop(event)">
       <div class="drop-zone-inner">
-        <span class="drop-icon">📷</span>
-        <p class="drop-main">写真をここにドラッグ＆ドロップ</p>
-        <p class="drop-sub">または クリックしてファイルを選択</p>
+        <span class="drop-icon">📷🎬</span>
+        <p class="drop-main">写真・動画をここにドラッグ＆ドロップ</p>
+        <p class="drop-sub">または クリックしてファイルを選択（動画は50MBまで）</p>
       </div>
-      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="uploadPhotos(event)">
+      <input type="file" id="mediaInput" accept="image/*,video/*" multiple style="display:none" onchange="uploadMedia(event)">
     </div>
 
     <div class="progress-wrap" id="progressWrap" style="display:none">
       <div class="progress-bar" id="progressBar"></div>
-      <span id="progressText">0 / 0 枚アップロード中…</span>
+      <span id="progressText">準備中…</span>
     </div>
 
     <div class="photo-grid" id="photoGrid">
-      <p class="empty-msg">まだ写真がありません。上のエリアから追加できます。</p>
+      <p class="empty-msg">まだ写真・動画がありません。上のエリアから追加できます。</p>
     </div>
   </main>
 
-  <!-- ライトボックス（写真コメント付き） -->
+  <!-- ライトボックス（写真・動画＋コメント） -->
   <div class="lightbox" id="lightbox" style="display:none">
     <button class="lb-close" onclick="closeLightbox()">✕</button>
     <button class="lb-prev" onclick="changePhoto(-1)">‹</button>
     <div class="lb-main">
-      <img id="lbImg" src="" alt="">
+      <!-- 写真表示 -->
+      <img id="lbImg" src="" alt="" style="display:none">
+      <!-- 動画表示 -->
+      <video id="lbVideo" controls style="display:none; max-width:60vw; max-height:75vh; border-radius:6px;"></video>
       <div class="lb-comment-panel">
         <h3 class="lb-comment-title">💬 コメント</h3>
         <div class="lb-comments" id="lbComments"></div>
@@ -86,7 +90,7 @@
 
     const CLOUD_NAME    = 'dgsbvnswt';
     const UPLOAD_PRESET = 'yamapper';
-    const UPLOAD_URL    = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload';
+    const MAX_VIDEO_MB  = 50;
 
     const params  = new URLSearchParams(window.location.search);
     const albumId = params.get('id');
@@ -108,27 +112,39 @@
       renderPhotos();
     }
 
-    // 写真グリッド表示（コメント数バッジ付き）
+    // グリッド表示（写真・動画対応）
     function renderPhotos() {
       const grid = document.getElementById('photoGrid');
       if (currentPhotos.length === 0) {
-        grid.innerHTML = '<p class="empty-msg">まだ写真がありません。上のエリアから追加できます。</p>';
+        grid.innerHTML = '<p class="empty-msg">まだ写真・動画がありません。上のエリアから追加できます。</p>';
         return;
       }
-      grid.innerHTML = currentPhotos.map((p, i) => `
-        <div class="photo-item" onclick="openLightbox(${i})">
-          <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
-          <div class="photo-overlay">
-            <span class="photo-comment-badge" id="badge-${i}">💬 -</span>
-            <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
-          </div>
-        </div>
-      `).join('');
-      // 各写真のコメント数を取得して表示
+      grid.innerHTML = currentPhotos.map((p, i) => {
+        if (p.type === 'video') {
+          return `
+            <div class="photo-item video-item" onclick="openLightbox(${i})">
+              <video src="${p.src}" class="video-thumb" muted playsinline preload="metadata"></video>
+              <div class="video-play-icon">▶</div>
+              <div class="photo-overlay">
+                <span class="photo-comment-badge" id="badge-${i}">💬 -</span>
+                <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
+              </div>
+            </div>`;
+        } else {
+          return `
+            <div class="photo-item" onclick="openLightbox(${i})">
+              <img src="${p.src}" alt="${p.caption || ''}" loading="lazy">
+              <div class="photo-overlay">
+                <span class="photo-comment-badge" id="badge-${i}">💬 -</span>
+                <button class="btn-del-photo" onclick="event.stopPropagation();deletePhoto(${i})">✕</button>
+              </div>
+            </div>`;
+        }
+      }).join('');
       currentPhotos.forEach((_, i) => loadCommentCount(i));
     }
 
-    // コメント数バッジ更新
+    // コメント数バッジ
     function loadCommentCount(photoIndex) {
       import('./js/data.js').then(({ onPhotoCommentsChanged }) => {
         onPhotoCommentsChanged(albumId, photoIndex, comments => {
@@ -141,8 +157,22 @@
     // ライトボックスを開く
     function openLightbox(i) {
       lbIndex = i;
-      document.getElementById('lbImg').src             = currentPhotos[i].src;
-      document.getElementById('lbCaption').textContent = currentPhotos[i].caption || '';
+      const item = currentPhotos[i];
+      const img   = document.getElementById('lbImg');
+      const video = document.getElementById('lbVideo');
+
+      if (item.type === 'video') {
+        img.style.display   = 'none';
+        video.style.display = 'block';
+        video.src = item.src;
+        video.load();
+      } else {
+        video.pause();
+        video.style.display = 'none';
+        img.style.display   = 'block';
+        img.src = item.src;
+      }
+      document.getElementById('lbCaption').textContent = item.caption || '';
       document.getElementById('lightbox').style.display = 'flex';
       loadPhotoComments(i);
     }
@@ -171,7 +201,7 @@
       });
     }
 
-    // 写真コメント投稿
+    // コメント投稿
     window.postPhotoComment = async () => {
       const name = document.getElementById('lbName').value.trim();
       const text = document.getElementById('lbText').value.trim();
@@ -188,15 +218,15 @@
     };
 
     function closeLightbox() {
+      const video = document.getElementById('lbVideo');
+      video.pause();
       document.getElementById('lightbox').style.display = 'none';
       if (unsubPhotoComments) { unsubPhotoComments(); unsubPhotoComments = null; }
     }
 
     function changePhoto(dir) {
       lbIndex = (lbIndex + dir + currentPhotos.length) % currentPhotos.length;
-      document.getElementById('lbImg').src             = currentPhotos[lbIndex].src;
-      document.getElementById('lbCaption').textContent = currentPhotos[lbIndex].caption || '';
-      loadPhotoComments(lbIndex);
+      openLightbox(lbIndex);
     }
 
     // D&D
@@ -205,14 +235,13 @@
     window.handleDrop      = e => {
       e.preventDefault();
       document.getElementById('dropZone').classList.remove('drag-over');
-      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
       if (files.length > 0) uploadFiles(files);
     };
 
-    window.uploadPhotos = e => {
+    window.uploadMedia = e => {
       const files = Array.from(e.target.files);
       if (files.length > 0) {
-        // スマホでチェックマーク押した直後に即時表示
         const progressWrap = document.getElementById('progressWrap');
         const progressText = document.getElementById('progressText');
         progressWrap.style.display = 'block';
@@ -238,36 +267,72 @@
       const progressText = document.getElementById('progressText');
       progressWrap.style.display = 'block';
       let done = 0;
+      let skipped = 0;
 
       for (const file of files) {
-        progressText.textContent = done + ' / ' + files.length + ' 枚アップロード中…';
+        const isVideo = file.type.startsWith('video/');
+
+        // 動画サイズチェック（50MB）
+        if (isVideo && file.size > MAX_VIDEO_MB * 1024 * 1024) {
+          alert(file.name + ' は50MBを超えています。スキップします。');
+          skipped++;
+          done++;
+          continue;
+        }
+
+        progressText.textContent = (done + 1) + ' / ' + files.length + ' ' + (isVideo ? '動画' : '写真') + 'をアップロード中…';
         progressBar.style.width  = Math.round(done / files.length * 100) + '%';
+
         try {
-          const base64 = await toBase64(file);
-          const res    = await fetch(UPLOAD_URL, {
+          const base64   = await toBase64(file);
+          const endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/' + (isVideo ? 'video' : 'image') + '/upload';
+          const body     = {
+            file:          base64,
+            upload_preset: UPLOAD_PRESET,
+          };
+          // 動画は自動圧縮・品質最適化
+          if (isVideo) {
+            body.eager = [{ quality: 'auto', fetch_format: 'mp4' }];
+          }
+
+          const res  = await fetch(endpoint, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ file: base64, upload_preset: UPLOAD_PRESET })
+            body:    JSON.stringify(body)
           });
           const data = await res.json();
+
           if (data.secure_url) {
-            currentPhotos.push({ src: data.secure_url, publicId: data.public_id, caption: file.name.replace(/\.[^/.]+$/, '') });
+            // 動画はeager変換後のURLを優先使用（圧縮済み）
+            const url = isVideo && data.eager && data.eager[0]
+              ? data.eager[0].secure_url
+              : data.secure_url;
+            currentPhotos.push({
+              src:      url,
+              publicId: data.public_id,
+              caption:  file.name.replace(/\.[^/.]+$/, ''),
+              type:     isVideo ? 'video' : 'image'
+            });
           } else {
             console.error('Upload error:', data);
+            alert(file.name + ' のアップロードに失敗しました。');
           }
-        } catch(err) { console.error('Upload failed:', err); }
+        } catch(err) {
+          console.error('Upload failed:', err);
+        }
         done++;
       }
 
       progressBar.style.width  = '100%';
-      progressText.textContent = done + ' 枚のアップロード完了！';
+      const uploaded = done - skipped;
+      progressText.textContent = uploaded + ' 件のアップロード完了！';
       setTimeout(() => { progressWrap.style.display = 'none'; }, 2000);
       await savePhotos(albumId, currentPhotos);
       renderPhotos();
     }
 
     window.deletePhoto = async (index) => {
-      if (!confirm('この写真を削除しますか？')) return;
+      if (!confirm('この' + (currentPhotos[index].type === 'video' ? '動画' : '写真') + 'を削除しますか？')) return;
       currentPhotos.splice(index, 1);
       await savePhotos(albumId, currentPhotos);
       renderPhotos();

@@ -174,7 +174,6 @@
     });
 
     window.doDelete = async (id) => {
-      if (!confirm('このアルバムを削除しますか？')) return;
       await deleteAlbumById(id);
     };
 

@@ -183,7 +183,6 @@
     };
 
     window.delPhotoComment = async (commentId) => {
-      if (!confirm('このコメントを削除しますか？')) return;
       await removePhotoComment(albumId, commentId);
     };
 
@@ -267,7 +266,6 @@
     }
 
     window.deletePhoto = async (index) => {
-      if (!confirm('この写真をアルバムから削除しますか？')) return;
       currentPhotos.splice(index, 1);
       await savePhotos(albumId, currentPhotos);
       renderPhotos();

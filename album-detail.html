@@ -7,6 +7,7 @@
   <title>やまっぺ - アルバム詳細</title>
   <link rel="stylesheet" href="css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
 </head>
 <body>
   <nav class="navbar">
@@ -326,6 +327,36 @@
       });
     }
 
+    // EXIF撮影日時を取得
+    function getExifDate(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              EXIF.getData(img, function() {
+                const dt = EXIF.getTag(this, 'DateTimeOriginal');
+                if (dt) {
+                  // "2024:05:01 12:34:56" → "2024-05-01T12:34:56"
+                  const iso = dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+                  resolve(new Date(iso).getTime());
+                } else {
+                  // EXIFなし → ファイル更新日時
+                  resolve(file.lastModified || 0);
+                }
+              });
+            } catch(e) {
+              resolve(file.lastModified || 0);
+            }
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(file.lastModified || 0);
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function uploadFiles(files) {
       const progressWrap = document.getElementById('progressWrap');
       const progressBar  = document.getElementById('progressBar');
@@ -376,11 +407,14 @@
             const url = useCompress2 && data.eager && data.eager[0]
               ? data.eager[0].secure_url
               : data.secure_url;
+            // 写真はEXIF撮影日時を取得、動画はファイル更新日時
+            const takenAt = isVideo ? (file.lastModified || 0) : await getExifDate(file);
             currentPhotos.push({
               src:      url,
               publicId: data.public_id,
               caption:  file.name.replace(/\.[^/.]+$/, ''),
-              type:     isVideo ? 'video' : 'image'
+              type:     isVideo ? 'video' : 'image',
+              takenAt:  takenAt
             });
           } else {
             console.error('Upload error:', data);
@@ -396,6 +430,10 @@
       const uploaded = done - skipped;
       progressText.textContent = uploaded + ' 件のアップロード完了！';
       setTimeout(() => { progressWrap.style.display = 'none'; }, 2000);
+
+      // 撮影日時順（古い→新しい）にソート
+      currentPhotos.sort((a, b) => (a.takenAt || 0) - (b.takenAt || 0));
+
       await savePhotos(albumId, currentPhotos);
       renderPhotos();
     }

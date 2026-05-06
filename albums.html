@@ -10,7 +10,7 @@
 </head>
 <body>
   <nav class="navbar">
-    <a href="home.html" class="nav-logo">⛰️ やまっぺ<span class="nav-version">v1.2</span></a>
+    <a href="home.html" class="nav-logo">⛰️ やまっぺ<span class="nav-version">v1.1</span></a>
     <div class="nav-links">
       <a href="home.html">ホーム</a>
       <a href="albums.html" class="active">アルバム</a>
@@ -165,10 +165,8 @@
           </a>
           <div class="card-footer">
             <span class="photo-count">📷 ${a.photos ? a.photos.length : 0}枚</span>
-            <div style="display:flex;gap:0.5rem">
-              <button class="btn-outline-sm" onclick="openEditModal(${JSON.stringify(a).split('"').join('&quot;')})">編集</button>
-              <button class="btn-danger-sm" onclick="window.doDelete('${a.id}')">削除</button>
-            </div>
+            <button class="btn-outline-sm" onclick="openEditModal(${JSON.stringify(a).split('"').join('&quot;')})">編集</button>
+            <button class="btn-card-delete" onclick="window.doDelete('${a.id}')" title="削除">✕</button>
           </div>
         </div>
       `).join('');

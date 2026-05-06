@@ -236,6 +236,19 @@ body {
   font-size: 0.85rem; color: var(--col-muted);
 }
 
+.btn-card-delete {
+  background: none;
+  border: none;
+  color: var(--col-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  line-height: 1;
+}
+.btn-card-delete:hover { color: var(--col-danger); background: rgba(160,92,92,0.1); }
+
 /* 統計 */
 .stats-section { background: var(--col-surface); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--col-border); }
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
